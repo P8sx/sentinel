@@ -11,5 +11,8 @@
         "board/esp32s3-builtin.cfg"
     ],
     "idf.pythonBinPath": "${env:HOME}/.espressif/python_env/idf5.1_py3.12_env/bin/python",
-    "idf.toolsPath": "${env:HOME}/.espressif"
+    "idf.toolsPath": "${env:HOME}/.espressif",
+    "files.associations": {
+        "gpio.h": "c"
+    }
 }
