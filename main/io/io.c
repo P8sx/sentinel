@@ -157,78 +157,91 @@ void io_init_pcnt(){
     ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_m2));
 }
 
-void io_m1_dir(uint8_t clockwise) {
-    if (device_config.m1_dir == clockwise) {
-        ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_m1, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
-        gpio_set_level(M1_RLY_A_PIN, 1);
-        gpio_set_level(M1_RLY_B_PIN, 0);
+void io_motor_dir(motor_id_t id, uint8_t clockwise) {
+    pcnt_channel_handle_t pcnt_channel;
+    gpio_num_t relay_pin_a, relay_pin_b;
+    uint8_t motor_dir;
+
+    if(id == M1){
+        pcnt_channel = pcnt_chan_m1;
+        relay_pin_a = M1_RLY_A_PIN;
+        relay_pin_b = M1_RLY_B_PIN;
+        motor_dir = device_config.m1_dir;
     } else {
-        ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_m1, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
+        pcnt_channel = pcnt_chan_m2;
+        relay_pin_a = M2_RLY_A_PIN;
+        relay_pin_b = M2_RLY_B_PIN;
+        motor_dir = device_config.m2_dir;
+    }
+
+    if (motor_dir == clockwise) {
+        ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_channel, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
+        gpio_set_level(relay_pin_a, 1);
+        gpio_set_level(relay_pin_b, 0);
+    } else {
+        ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_channel, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
+        gpio_set_level(relay_pin_a, 0);
+        gpio_set_level(relay_pin_b, 1);
+    }
+}
+
+void io_motor_stop(motor_id_t id){
+    if(id == M1){
+        ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+        io_motor_pwm(id, 0);
         gpio_set_level(M1_RLY_A_PIN, 0);
-        gpio_set_level(M1_RLY_B_PIN, 1);
+        gpio_set_level(M1_RLY_B_PIN, 0);
     }
-}
-void io_m1_stop(){
-    ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    io_m1_pwm(0);
-    gpio_set_level(M1_RLY_A_PIN, 0);
-    gpio_set_level(M1_RLY_B_PIN, 0);
-}
-
-void io_m2_dir(uint8_t clockwise) {
-    if (device_config.m2_dir == clockwise) {
-        ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_m2, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
-        gpio_set_level(M2_RLY_A_PIN, 1);
-        gpio_set_level(M2_RLY_B_PIN, 0);
-    } else {
-        ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_m2, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
+    else{
+        ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+        io_motor_pwm(id, 0);
         gpio_set_level(M2_RLY_A_PIN, 0);
-        gpio_set_level(M2_RLY_B_PIN, 1);
+        gpio_set_level(M2_RLY_B_PIN, 0);
     }
-}
-void io_m2_stop(){
-    ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-    io_m2_pwm(0);
-    gpio_set_level(M2_RLY_A_PIN, 0);
-    gpio_set_level(M2_RLY_B_PIN, 0);
+
 }
 
-void io_m1_pwm(uint32_t freq){
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, freq>PWM_LIMIT?PWM_LIMIT:freq);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-}
-void io_m2_pwm(uint32_t freq){
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, freq>PWM_LIMIT?PWM_LIMIT:freq);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-}
-void io_m1_fade(uint32_t target, uint32_t time){
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, target, time);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
-}
-void io_m2_fade(uint32_t target, uint32_t time){
-    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, target, time);
-    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, LEDC_FADE_NO_WAIT);
+void io_motor_pwm(motor_id_t id, uint32_t freq){
+    uint32_t frequency = freq>PWM_LIMIT?PWM_LIMIT:freq;
+    if(id == M1){
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, frequency);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    }
+    else{
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, frequency);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+    }
+
 }
 
 
-int32_t io_get_pcnt_m1(){
+void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time){
+    if(id == M1){
+        ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, target, time);
+        ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
+    }
+    else{
+        ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, target, time);
+        ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, LEDC_FADE_NO_WAIT);
+    }
+
+}
+
+int32_t io_motor_get_pcnt(motor_id_t id){
     int value = 0;
-    pcnt_unit_get_count(pcnt_unit_m1, &value);
+    if(id == M1){
+        pcnt_unit_get_count(pcnt_unit_m1, &value);
+    }
+    else{
+        pcnt_unit_get_count(pcnt_unit_m2, &value);
+    }
     return value;
 }
 
-int32_t io_get_pcnt_m2(){
-    int value = 0;
-    pcnt_unit_get_count(pcnt_unit_m2, &value);
-    return value;
+int32_t io_motor_get_analog(motor_id_t id){
+    return (id == M1) ? adc1_get_raw(M1_SENSE_PIN) : adc1_get_raw(M2_SENSE_PIN);
 }
 
-int32_t io_get_analog_m1(){
-    return adc1_get_raw(M1_SENSE_PIN);
-}
-int32_t io_get_analog_m2(){
-    return adc1_get_raw(M2_SENSE_PIN);
-}
 
 void io_buzzer(uint8_t counts, uint16_t on_period, uint16_t off_period){
        for (uint8_t i = 0; i < counts; ++i) {

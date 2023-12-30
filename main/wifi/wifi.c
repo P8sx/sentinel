@@ -115,63 +115,63 @@ static void tcp_receive_handle(const int sock)
                 snprintf(tx_buffer, 128, "device uptime:%is\n", timer);
             }
             else if(strcmp(rx_buffer, "open m1") == 0){
-                motor_command_t cmd = {.action = OPEN, .id = M1};
+                gate_command_t cmd = {.action = OPEN, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "close m1") == 0){
-                motor_command_t cmd = {.action = CLOSE, .id = M1};
+                gate_command_t cmd = {.action = CLOSE, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "stop m1") == 0){
-                motor_command_t cmd = {.action = STOP, .id = M1};
+                gate_command_t cmd = {.action = STOP, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "next m1") == 0){
-                motor_command_t cmd = {.action = NEXT_STATE, .id = M1};
+                gate_command_t cmd = {.action = NEXT_STATE, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "open m2") == 0){
-                motor_command_t cmd = {.action = OPEN, .id = M2};
+                gate_command_t cmd = {.action = OPEN, .id = M2};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "close m2") == 0){
-                motor_command_t cmd = {.action = CLOSE, .id = M2};
+                gate_command_t cmd = {.action = CLOSE, .id = M2};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "stop m2") == 0){
-                motor_command_t cmd = {.action = STOP, .id = M2};
+                gate_command_t cmd = {.action = STOP, .id = M2};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "next m2") == 0){
-                motor_command_t cmd = {.action = NEXT_STATE, .id = M2};
+                gate_command_t cmd = {.action = NEXT_STATE, .id = M2};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "open") == 0){
-                motor_command_t cmd = {.action = OPEN, .id = M1};
+                gate_command_t cmd = {.action = OPEN, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
                 cmd.id = M2;
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "close") == 0){
-                motor_command_t cmd = {.action = CLOSE, .id = M1};
+                gate_command_t cmd = {.action = CLOSE, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
                 cmd.id = M2;
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "stop") == 0){
-                motor_command_t cmd = {.action = STOP, .id = M1};
+                gate_command_t cmd = {.action = STOP, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
                 cmd.id = M2;
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "next") == 0){
-                motor_command_t cmd = {.action = NEXT_STATE, .id = M1};
+                gate_command_t cmd = {.action = NEXT_STATE, .id = M1};
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
                 cmd.id = M2;
                 xQueueSend(motor_action_queue, &cmd, pdMS_TO_TICKS(5));
             }
             else if(strcmp(rx_buffer, "status") == 0){
-                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, M2:%s PCNT:%i ANALOG %i\n",STATES_STRING[control_get_motor_state(M1)], (int)io_get_pcnt_m1(), (int)io_get_analog_m1(), STATES_STRING[control_get_motor_state(M2)], (int)io_get_pcnt_m2(), (int)io_get_analog_m2());
+                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[control_get_motor_state(M1)], (int)io_motor_get_pcnt(M1), (int)io_motor_get_analog(M1), (int)control_get_motor_open_pcnt(M1), (int)control_get_motor_close_pcnt(M1), STATES_STRING[control_get_motor_state(M2)], (int)io_motor_get_pcnt(M2), (int)io_motor_get_analog(M2), (int)control_get_motor_open_pcnt(M2), (int)control_get_motor_close_pcnt(M2));
             }
 
             int tx_len = 0;
