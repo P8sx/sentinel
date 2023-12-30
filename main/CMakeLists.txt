@@ -1,2 +1,10 @@
-idf_component_register(SRCS "main.c"
-                    INCLUDE_DIRS ".")
+idf_component_register(
+    SRCS 
+        "main.c"
+        "io/io.c"
+        "drivers/i2c.c"
+        "wifi/wifi.c"
+        "io/control.c"
+    INCLUDE_DIRS 
+        "."
+)

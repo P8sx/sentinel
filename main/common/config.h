@@ -1,11 +1,15 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
 #include "hal/gpio_types.h"
+
 
 #define HW_VERSION 1.0
 #define SW_VERSION 0.1
-
 /* Analog PINS */
-#define M1_SENSE_PIN            GPIO_NUM_1
-#define M2_SENSE_PIN            GPIO_NUM_2
+#define M1_SENSE_PIN            ADC1_CHANNEL_1 // GPIO2
+#define M2_SENSE_PIN            ADC1_CHANNEL_0 // GPIO1
+#define ADC_ATTEN               ADC_ATTEN_DB_2_5
 
 /* RMT Pins*/
 #define RF_RECEIVER_PIN         GPIO_NUM_42
@@ -15,14 +19,17 @@
 #define M2_PULSE_PIN            GPIO_NUM_40
 
 /* PWM Pins */
-#define M1_PWM_PIN              GPIO_NUM_39
-#define M2_PWM_PIN              GPIO_NUM_38
+#define M1_PWM_PIN              GPIO_NUM_38
+#define M2_PWM_PIN              GPIO_NUM_39
+
+#define PWM_RESOLUTION          LEDC_TIMER_10_BIT
+#define PWM_LIMIT               (1 << PWM_RESOLUTION) - 1
 
 /* Digital output */
 #define M1_RLY_A_PIN            GPIO_NUM_45
 #define M1_RLY_B_PIN            GPIO_NUM_37
-#define M2_RLY_A_PIN            GPIO_NUM_36
-#define M2_RLY_B_PIN            GPIO_NUM_35
+#define M2_RLY_A_PIN            GPIO_NUM_35
+#define M2_RLY_B_PIN            GPIO_NUM_36
 
 #define BUZZER_PIN              GPIO_NUM_48
 
@@ -55,3 +62,32 @@
 
 #define I2C_SDA_INT_PIN         GPIO_NUM_21
 #define I2C_SCL_INT_PIN         GPIO_NUM_47
+
+
+/* TCP socket config */
+#define TCP_PORT                        3331
+#define TCP_KEEPALIVE_IDLE              5
+#define TCP_KEEPALIVE_INTERVAL          5
+#define TCP_KEEPALIVE_COUNT             3
+
+/* WIFI */
+#define WIFI_MAXIMUM_RETRY              5
+#define WIFI_SSID                       "hehe"
+#define WIFI_PASSWORD                   "not hehe"
+
+
+/* LOG */
+#define WIFI_LOG_TAG            "WIFI"
+#define TCP_LOG_TAG             "TCP"
+#define MOTOR_CONTROL_LOG_TAG   "MT-CTRL"
+#define MOTOR_LOG_TAG           "MT"
+
+static struct device_config_t{
+    uint8_t m1_dir:1;
+    uint8_t m2_dir:1;
+} device_config = {
+    .m1_dir = false,
+    .m2_dir = false
+};
+
+#endif
