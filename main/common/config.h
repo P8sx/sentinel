@@ -2,14 +2,20 @@
 #define CONFIG_H
 
 #include "hal/gpio_types.h"
-
+#include "common/types.h"
 
 #define HW_VERSION 1.0
 #define SW_VERSION 0.1
+
+extern device_config_t device_config;
+
+
 /* Analog PINS */
-#define M1_SENSE_PIN            ADC1_CHANNEL_1 // GPIO2
-#define M2_SENSE_PIN            ADC1_CHANNEL_0 // GPIO1
+#define M1_SENSE_CHANNEL        ADC_CHANNEL_1              // GPIO2
+#define M2_SENSE_CHANNEL        ADC_CHANNEL_0              // GPIO1
 #define ADC_ATTEN               ADC_ATTEN_DB_2_5
+#define SHUNT_VALUE             10                          // in milliohms
+#define OP_AMP_GAIN             20
 
 /* RMT Pins*/
 #define RF_RECEIVER_PIN         GPIO_NUM_42
@@ -57,12 +63,14 @@
 #define RS485_EN_PIN            GPIO_NUM_5
 #define RS485_RX_PIN            GPIO_NUM_6
 
-#define I2C_SDA_EXT_PIN         GPIO_NUM_7
-#define I2C_SCL_EXT_PIN         GPIO_NUM_15
+#define I2C_EXT_SDA_PIN         GPIO_NUM_7
+#define I2C_EXT_SCL_PIN         GPIO_NUM_15
 
-#define I2C_SDA_INT_PIN         GPIO_NUM_21
-#define I2C_SCL_INT_PIN         GPIO_NUM_47
-
+#define I2C_INT_FREQ            100000
+#define I2C_INT_TIMEOUT_MS      1000
+#define I2C_INT_SDA_PIN         GPIO_NUM_21
+#define I2C_INT_SCL_PIN         GPIO_NUM_47
+#define I2C_INT_OLED_ADDR       0x78
 
 /* TCP socket config */
 #define TCP_PORT                        3331
@@ -78,16 +86,9 @@
 
 /* LOG */
 #define WIFI_LOG_TAG            "WIFI"
+#define I2C_LOG_TAG             "I2C"
 #define TCP_LOG_TAG             "TCP"
 #define MOTOR_CONTROL_LOG_TAG   "MT-CTRL"
 #define MOTOR_LOG_TAG           "MT"
-
-static struct device_config_t{
-    uint8_t m1_dir:1;
-    uint8_t m2_dir:1;
-} device_config = {
-    .m1_dir = false,
-    .m2_dir = false
-};
 
 #endif

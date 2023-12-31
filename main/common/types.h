@@ -36,8 +36,21 @@ typedef struct gate_command_t{
 typedef struct motor_t {
     atomic_uint_fast8_t state;
     const motor_id_t id; 
+    atomic_bool open_pcnt_cal;
+    atomic_bool close_pcnt_cal;
     atomic_int_fast16_t open_pcnt;
     atomic_int_fast16_t close_pcnt;
 } motor_t;
+
+typedef struct device_config_t{
+    atomic_bool m1_dir;
+    atomic_bool m2_dir;
+    atomic_uint_fast16_t m1_ocp_treshold;
+    atomic_uint_fast16_t m1_ocp_count;
+    atomic_uint_fast16_t m2_ocp_treshold;
+    atomic_uint_fast16_t m2_ocp_count;
+
+} device_config_t;
+
 
 #endif

@@ -5,8 +5,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/pulse_cnt.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 #include "esp_log.h"
 
 
@@ -16,7 +17,9 @@ static pcnt_unit_handle_t pcnt_unit_m2 = NULL;
 static pcnt_channel_handle_t pcnt_chan_m1 = NULL;
 static pcnt_channel_handle_t pcnt_chan_m2 = NULL;
 
-static esp_adc_cal_characteristics_t adc1_chars;
+static adc_cali_handle_t adc1_cali_m1_handle = NULL;
+static adc_cali_handle_t adc1_cali_m2_handle = NULL;
+static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
 void io_init_inputs(){
 
@@ -59,22 +62,71 @@ void io_init_outputs(){
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 }
 
-void io_init_analog(){
-    esp_err_t ret = esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP_FIT);
-    bool cali_enable = false;
-    if (ret == ESP_ERR_NOT_SUPPORTED) {
-        ESP_LOGW("ADC Init", "Calibration scheme not supported, skip software calibration");
-    } else if (ret == ESP_ERR_INVALID_VERSION) {
-        ESP_LOGW("ADC Init", "eFuse not burnt, skip software calibration");
-    } else if (ret == ESP_OK) {
-        cali_enable = true;
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN, ADC_WIDTH_BIT_DEFAULT, 0, &adc1_chars);
-    } else {
-        ESP_LOGE("ADC Init", "Invalid arg");
+static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
+{
+    adc_cali_handle_t handle = NULL;
+    esp_err_t ret = ESP_FAIL;
+    bool calibrated = false;
+
+#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+    if (!calibrated) {
+        ESP_LOGI("ADC", "calibration scheme version is %s", "Curve Fitting");
+        adc_cali_curve_fitting_config_t cali_config = {
+            .unit_id = unit,
+            .chan = channel,
+            .atten = atten,
+            .bitwidth = ADC_BITWIDTH_12,
+        };
+        ret = adc_cali_create_scheme_curve_fitting(&cali_config, &handle);
+        if (ret == ESP_OK) {
+            calibrated = true;
+        }
     }
-    ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
-    ESP_ERROR_CHECK(adc1_config_channel_atten(M1_SENSE_PIN, ADC_ATTEN));
-    ESP_ERROR_CHECK(adc1_config_channel_atten(M2_SENSE_PIN, ADC_ATTEN));
+#endif
+
+#if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+    if (!calibrated) {
+        ESP_LOGI("ADC", "calibration scheme version is %s", "Line Fitting");
+        adc_cali_line_fitting_config_t cali_config = {
+            .unit_id = unit,
+            .atten = atten,
+            .bitwidth = ADC_BITWIDTH_12,
+        };
+        ret = adc_cali_create_scheme_line_fitting(&cali_config, &handle);
+        if (ret == ESP_OK) {
+            calibrated = true;
+        }
+    }
+#endif
+
+    *out_handle = handle;
+    if (ret == ESP_OK) {
+        ESP_LOGI("ADC", "Calibration Success");
+    } else if (ret == ESP_ERR_NOT_SUPPORTED || !calibrated) {
+        ESP_LOGW("ADC", "eFuse not burnt, skip software calibration");
+    } else {
+        ESP_LOGE("ADC", "Invalid arg or no memory");
+    }
+
+    return calibrated;
+}
+
+void io_init_analog(){
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_12,
+        .atten = ADC_ATTEN,
+    };
+    adc_oneshot_unit_init_cfg_t init_config = {
+        .unit_id = ADC_UNIT_1,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &adc1_handle));
+
+    example_adc_calibration_init(ADC_UNIT_1, M1_SENSE_CHANNEL, ADC_ATTEN, &adc1_cali_m1_handle);
+    example_adc_calibration_init(ADC_UNIT_1, M2_SENSE_CHANNEL, ADC_ATTEN, &adc1_cali_m2_handle);
+
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, M1_SENSE_CHANNEL, &config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, M2_SENSE_CHANNEL, &config));
 }
 
 void io_init_pwm(){
@@ -162,16 +214,16 @@ void io_motor_dir(motor_id_t id, uint8_t clockwise) {
     gpio_num_t relay_pin_a, relay_pin_b;
     uint8_t motor_dir;
 
-    if(id == M1){
+    if(M1 == id){
         pcnt_channel = pcnt_chan_m1;
         relay_pin_a = M1_RLY_A_PIN;
         relay_pin_b = M1_RLY_B_PIN;
-        motor_dir = device_config.m1_dir;
+        motor_dir = atomic_load(&(device_config.m1_dir));
     } else {
         pcnt_channel = pcnt_chan_m2;
         relay_pin_a = M2_RLY_A_PIN;
         relay_pin_b = M2_RLY_B_PIN;
-        motor_dir = device_config.m2_dir;
+        motor_dir = atomic_load(&(device_config.m2_dir));
     }
 
     if (motor_dir == clockwise) {
@@ -186,7 +238,7 @@ void io_motor_dir(motor_id_t id, uint8_t clockwise) {
 }
 
 void io_motor_stop(motor_id_t id){
-    if(id == M1){
+    if(M1 == id){
         ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
         io_motor_pwm(id, 0);
         gpio_set_level(M1_RLY_A_PIN, 0);
@@ -203,7 +255,7 @@ void io_motor_stop(motor_id_t id){
 
 void io_motor_pwm(motor_id_t id, uint32_t freq){
     uint32_t frequency = freq>PWM_LIMIT?PWM_LIMIT:freq;
-    if(id == M1){
+    if(M1 == id){
         ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, frequency);
         ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
     }
@@ -216,7 +268,7 @@ void io_motor_pwm(motor_id_t id, uint32_t freq){
 
 
 void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time){
-    if(id == M1){
+    if(M1 == id){
         ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, target, time);
         ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
     }
@@ -229,7 +281,7 @@ void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time){
 
 int32_t io_motor_get_pcnt(motor_id_t id){
     int value = 0;
-    if(id == M1){
+    if(M1 == id){
         pcnt_unit_get_count(pcnt_unit_m1, &value);
     }
     else{
@@ -238,8 +290,13 @@ int32_t io_motor_get_pcnt(motor_id_t id){
     return value;
 }
 
-int32_t io_motor_get_analog(motor_id_t id){
-    return (id == M1) ? adc1_get_raw(M1_SENSE_PIN) : adc1_get_raw(M2_SENSE_PIN);
+uint16_t io_motor_get_current(motor_id_t id){
+    int adc_value = 0;
+    int voltage_value = 0;
+    adc_oneshot_read(adc1_handle, (M1 == id) ? M1_SENSE_CHANNEL : M2_SENSE_CHANNEL, &adc_value);
+    adc_cali_raw_to_voltage((M1 == id) ? adc1_cali_m1_handle : adc1_cali_m2_handle, adc_value, &voltage_value);
+    float current = (((float)voltage_value)/OP_AMP_GAIN) / (SHUNT_VALUE); 
+    return (uint16_t)(current * 1000);
 }
 
 

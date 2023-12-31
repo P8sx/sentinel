@@ -3,7 +3,7 @@ idf_component_register(
         "main.c"
         "io/io.c"
         "drivers/i2c.c"
-        "wifi/wifi.c"
+        "wireless/wifi.c"
         "io/control.c"
     INCLUDE_DIRS 
         "."

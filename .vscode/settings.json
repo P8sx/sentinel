@@ -43,7 +43,10 @@
         "regex": "c",
         "tuple": "c",
         "type_traits": "c",
-        "utility": "c"
+        "utility": "c",
+        "types.h": "c",
+        "random": "c",
+        "thread": "c"
     },
     "idf.flashType": "JTAG",
     "idf.port": "/dev/ttyACM0"

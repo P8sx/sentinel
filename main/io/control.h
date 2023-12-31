@@ -14,7 +14,7 @@ gate_states_t control_get_motor_state(motor_id_t id);
 int16_t control_get_motor_open_pcnt(motor_id_t id);
 int16_t control_get_motor_close_pcnt(motor_id_t id);
 
-void motor_init();
+void control_motor_init();
 void motor_action_task(void *pvParameters);
 void motor_task(void *pvParameters);
 
