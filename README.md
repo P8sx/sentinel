@@ -1,4 +1,4 @@
-# Gate Controller
+# Sentinel
 <p align="center">
 <img src="https://img.shields.io/github/last-commit/P8sx/sentinel.svg?style=for-the-badge" />
 &nbsp;
