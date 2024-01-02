@@ -20,6 +20,7 @@
 #include "nvs_flash.h"
 #include "esp_timer.h"
 #include <string.h>
+#include <esp_ghota.h>
 
 TaskHandle_t tcp_server_task_handle = NULL;
 TaskHandle_t motor_action_task_handle = NULL;
@@ -35,6 +36,27 @@ device_config_t device_config = {
     .m1_ocp_count = 150,
     .m2_ocp_count = 150,
 };
+
+
+static void ghota_event_callback(void* handler_args, esp_event_base_t base, int32_t id, void* event_data) {
+    ghota_client_handle_t *client = (ghota_client_handle_t *)handler_args;
+    ESP_LOGI(GHOTA_LOG_TAG, "Got Update Callback: %s", ghota_get_event_str(id));
+    if (id == GHOTA_EVENT_START_STORAGE_UPDATE) {
+        ESP_LOGI(GHOTA_LOG_TAG, "Starting storage update");
+        /* if we are updating the SPIFF storage we should unmount it */
+    } else if (id == GHOTA_EVENT_FINISH_STORAGE_UPDATE) {
+        ESP_LOGI(GHOTA_LOG_TAG, "Ending storage update");
+        /* after updating we can remount, but typically the device will reboot shortly after recieving this event. */
+    } else if (id == GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS) {
+        /* display some progress with the firmware update */
+        ESP_LOGI(GHOTA_LOG_TAG, "Firmware Update Progress: %d%%", *((int*) event_data));
+    } else if (id == GHOTA_EVENT_STORAGE_UPDATE_PROGRESS) {
+        /* display some progress with the spiffs partition update */
+        ESP_LOGI(GHOTA_LOG_TAG, "Storage Update Progress: %d%%", *((int*) event_data));
+    }
+    (void)client;
+    return;
+}
 
 #if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
 void save_config(){
@@ -97,6 +119,20 @@ void app_main(void)
     rf433_init();
     
     io_buzzer(1,50,100);
+
+
+    ghota_config_t ghconfig = {
+        .filenamematch = "sentinel-esp32s3.bin",
+        .storagenamematch = "storage-esp32.bin",
+        .updateInterval = 1,
+    };
+    ghota_client_handle_t *ghota_client = ghota_init(&ghconfig);
+    if (ghota_client == NULL) {
+        ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
+        return;
+    }
+    esp_event_handler_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &ghota_event_callback, ghota_client);
+    ESP_ERROR_CHECK(ghota_start_update_timer(ghota_client));
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
         // uint64_t start = esp_timer_get_time();

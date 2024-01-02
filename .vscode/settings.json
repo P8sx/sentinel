@@ -54,5 +54,5 @@
         "*.inc": "c"
     },
     "idf.flashType": "JTAG",
-    "idf.port": "/dev/ttyACM2"
+    "idf.port": "/dev/ttyACM1"
 }

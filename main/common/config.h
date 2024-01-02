@@ -4,9 +4,6 @@
 #include "hal/gpio_types.h"
 #include "common/types.h"
 
-#define HW_VERSION 1.0
-#define SW_VERSION 0.1
-
 extern device_config_t device_config;
 
 
@@ -90,5 +87,5 @@ extern device_config_t device_config;
 #define TCP_LOG_TAG             "TCP"
 #define MOTOR_CONTROL_LOG_TAG   "MT-CTRL"
 #define MOTOR_LOG_TAG           "MT"
-
+#define GHOTA_LOG_TAG           "GHOTA"
 #endif
