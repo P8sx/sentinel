@@ -59,6 +59,10 @@ void wifi_init(){
     ESP_ERROR_CHECK(esp_netif_init());
     esp_netif_create_default_wifi_sta();
 
+    esp_netif_t *esp_netif = NULL;
+    esp_netif = esp_netif_next(esp_netif);
+    esp_netif_set_hostname(esp_netif, "sentinel");
+    
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
@@ -77,13 +81,20 @@ void wifi_init(){
 
     wifi_config_t wifi_config = {
         .sta = {
+#if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
             .ssid = WIFI_SSID,
             .password = WIFI_PASSWORD,
+#endif
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
             .sae_h2e_identifier = "test",
         },
     };
+    
+#if !defined(WIFI_SSID) && !defined(WIFI_PASSWORD)
+    memcpy(&(wifi_config.sta.ssid), &(device_config.wifi_ssid), sizeof(wifi_config.sta.ssid));
+    memcpy(&(wifi_config.sta.password), &(device_config.wifi_password), sizeof(wifi_config.sta.password));
+#endif
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );

@@ -17,7 +17,7 @@ extern device_config_t device_config;
 #define SHUNT_VALUE             10                          // in milliohms
 #define OP_AMP_GAIN             20
 
-/* RMT Pins*/
+/* RF Pins*/
 #define RF_RECEIVER_PIN         GPIO_NUM_42
 
 /* PCNT Pins*/
@@ -79,9 +79,9 @@ extern device_config_t device_config;
 #define TCP_KEEPALIVE_COUNT             3
 
 /* WIFI */
-#define WIFI_MAXIMUM_RETRY              5
-#define WIFI_SSID                       "hehe"
-#define WIFI_PASSWORD                   "not hehe"
+#define WIFI_MAXIMUM_RETRY              128
+// #define WIFI_SSID                       "hehe"
+// #define WIFI_PASSWORD                   "not hehe"
 
 
 /* LOG */

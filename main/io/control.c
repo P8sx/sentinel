@@ -4,6 +4,7 @@
 #include "common/config.h"
 #include "io/io.h"
 #include "math.h"
+
 /* extern variables */
 QueueHandle_t motor_action_queue = NULL;
 extern TaskHandle_t motor_m1_task_handle;
@@ -189,14 +190,17 @@ void motor_task(void *pvParameters){
     ESP_LOGI(MOTOR_LOG_TAG,"M%i Motor task initialized", id);
 
     while(true){
+        vTaskDelay(2000);
+    }
+    while(true){
         /* Task is only running when motor is truning */
         if(uxSemaphoreGetCount((M1 == id) ? motor_m1_mutex : motor_m2_mutex) == 0){
             ESP_LOGI(MOTOR_LOG_TAG,"M%i Motor task is suspending itself", id);
             vTaskSuspend(NULL);
             ESP_LOGI(MOTOR_LOG_TAG,"M%i Motor task is being resumed", id);
 
-            cfg_ocp_count = (M1 == id) ? atomic_load(&(device_config.m1_ocp_count)) : atomic_load(&(device_config.m2_ocp_count));
-            cfg_ocp_treshold = (M1 == id) ? atomic_load(&(device_config.m1_ocp_treshold)) : atomic_load(&(device_config.m1_ocp_treshold));
+            cfg_ocp_count = (M1 == id) ? device_config.m1_ocp_count : device_config.m2_ocp_count;
+            cfg_ocp_treshold = (M1 == id) ? device_config.m1_ocp_treshold : device_config.m2_ocp_treshold;
             ocp_count = 0;
             vTaskDelay(pdMS_TO_TICKS(1000)); // Delay for motor to ramp up
         }

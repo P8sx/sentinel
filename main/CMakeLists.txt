@@ -2,9 +2,10 @@ idf_component_register(
     SRCS 
         "main.c"
         "io/io.c"
+        "io/control.c"
         "drivers/i2c.c"
         "wireless/wifi.c"
-        "io/control.c"
+        "wireless/rf.c"
     INCLUDE_DIRS 
         "."
 )

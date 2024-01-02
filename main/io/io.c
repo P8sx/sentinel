@@ -40,6 +40,16 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
+
+    gpio_config_t rf_config = {
+        .intr_type = GPIO_INTR_ANYEDGE,
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = RF_RECEIVER_PIN,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE
+    };
+    ESP_ERROR_CHECK(gpio_config(&rf_config));
+
 }
 
 void io_init_outputs(){
@@ -218,12 +228,12 @@ void io_motor_dir(motor_id_t id, uint8_t clockwise) {
         pcnt_channel = pcnt_chan_m1;
         relay_pin_a = M1_RLY_A_PIN;
         relay_pin_b = M1_RLY_B_PIN;
-        motor_dir = atomic_load(&(device_config.m1_dir));
+        motor_dir = device_config.m1_dir;
     } else {
         pcnt_channel = pcnt_chan_m2;
         relay_pin_a = M2_RLY_A_PIN;
         relay_pin_b = M2_RLY_B_PIN;
-        motor_dir = atomic_load(&(device_config.m2_dir));
+        motor_dir = device_config.m2_dir;
     }
 
     if (motor_dir == clockwise) {

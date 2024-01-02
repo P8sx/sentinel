@@ -5,8 +5,9 @@
 #include "freertos/queue.h"
 #include "common/config.h"
 #include "io/io.h"
-#include "wireless/wifi.h"
 #include "io/control.h"
+#include "wireless/wifi.h"
+#include "wireless/rf.h"
 
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -18,31 +19,61 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
+#include <string.h>
 
 TaskHandle_t tcp_server_task_handle = NULL;
 TaskHandle_t motor_action_task_handle = NULL;
 TaskHandle_t motor_m1_task_handle = NULL;
 TaskHandle_t motor_m2_task_handle = NULL;
 
-device_config_t device_config;
-void device_config_init(){
-    atomic_init(&(device_config.m1_dir),false);
-    atomic_init(&(device_config.m2_dir),false);
-
-    atomic_init(&(device_config.m1_ocp_treshold), 1100);
-    atomic_init(&(device_config.m1_ocp_count), 150);
-
-    atomic_init(&(device_config.m2_ocp_treshold), 1100);
-    atomic_init(&(device_config.m2_ocp_count), 150);
-
+/* Default configuration */
+device_config_t device_config = {
+    .m1_dir = false,
+    .m2_dir = false,
+    .m1_ocp_treshold = 1100,
+    .m2_ocp_treshold = 1200,
+    .m1_ocp_count = 150,
+    .m2_ocp_count = 150,
+};
+#if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
+void save_config(){
+    nvs_handle_t nvs_handle;
+    device_config_t memory_device_config = {
+        .wifi_ssid = WIFI_SSID,
+        .wifi_password = WIFI_PASSWORD,
+        .m1_dir = false,
+        .m2_dir = false,
+        .m1_ocp_treshold = 1100,
+        .m2_ocp_treshold = 1200,
+        .m1_ocp_count = 150,
+        .m2_ocp_count = 150,
+    };
+    ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext","cfg-nmspace", NVS_READWRITE, &nvs_handle));
+    ESP_ERROR_CHECK(nvs_set_blob(nvs_handle, "config", &memory_device_config, sizeof(memory_device_config)));
+    ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+    nvs_close(nvs_handle);
+}
+#endif
+void config_init(){
+    nvs_handle_t nvs_handle;
+    device_config_t memory_device_config;
+    size_t size = sizeof(device_config_t);
+    ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext","cfg-nmspace", NVS_READWRITE, &nvs_handle));
+    ESP_ERROR_CHECK(nvs_get_blob(nvs_handle, "config", &memory_device_config, &size));
+    nvs_close(nvs_handle);
+    memcpy(&device_config, &memory_device_config, size);
 }
 
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(nvs_flash_init_partition("nvs_ext"));
+#if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
+    save_config();
+#endif
+    config_init();
+
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    device_config_init();
 
     io_init_outputs();
     io_init_inputs();
@@ -55,13 +86,13 @@ void app_main(void)
     wifi_init();
     init_i2c();
 	init_i2c_oled();
-
     /* All control critical tasks are handled by core 1 everything else like wifi/oled/user action by core 0 */
     xTaskCreatePinnedToCore(tcp_server_task, "tcp_server", 4096, NULL, 5, &tcp_server_task_handle, PRO_CPU_NUM);
 
     xTaskCreatePinnedToCore(motor_action_task, "motor_action_task", 4096, NULL, configMAX_PRIORITIES - 1, &motor_action_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(motor_task, "motor_m1_task", 4096, (void *)M1, configMAX_PRIORITIES - 1, &motor_m1_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(motor_task, "motor_m2_task", 4096, (void *)M2, configMAX_PRIORITIES - 1, &motor_m2_task_handle, APP_CPU_NUM);
+    rf433_init();
     
     io_buzzer(1,50,100);
     ESP_LOGI("MAIN","INIT DONE");

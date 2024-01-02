@@ -5,6 +5,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "io/io.h"
+#include <u8g2.h>
 
 static u8g2_t u8g2;
 
