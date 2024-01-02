@@ -1,7 +1,7 @@
 on:
   push:
   pull_request:
-    branches: [actions-test]
+    branches: [master]
 
 permissions:
   contents: write
@@ -28,7 +28,6 @@ jobs:
       run: |
         ls -lah 
         cp build/sentinel.bin sentinel-${{ matrix.targets }}.bin
-        cp build/storage.bin storage-${{ matrix.targets }}.bin
     - name: Archive Firmware Files
       uses: actions/upload-artifact@v3
       with: 
