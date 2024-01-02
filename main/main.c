@@ -35,6 +35,7 @@ device_config_t device_config = {
     .m1_ocp_count = 150,
     .m2_ocp_count = 150,
 };
+
 #if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
 void save_config(){
     nvs_handle_t nvs_handle;
@@ -54,6 +55,7 @@ void save_config(){
     nvs_close(nvs_handle);
 }
 #endif
+
 void config_init(){
     nvs_handle_t nvs_handle;
     device_config_t memory_device_config;
