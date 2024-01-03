@@ -5,6 +5,11 @@
 <img src="https://img.shields.io/github/license/P8sx/sentinel.svgsvg?style=for-the-badge" />
 </p>
 
+<p align="center">
+  <img alt="Light" src="img/3d.png" height="400px">
+&nbsp; &nbsp; &nbsp; &nbsp;
+  <img alt="Dark" src="img/pic.jpg" height="400px">
+</p>
 Goal of project was to create dual DC motor driver for controlling dual wing gate. Main requirements were:
 - Handle up to 40V/(3A per channel)
 - Current feedback
