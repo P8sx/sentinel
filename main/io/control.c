@@ -190,9 +190,6 @@ void motor_task(void *pvParameters){
     ESP_LOGI(MOTOR_LOG_TAG,"M%i Motor task initialized", id);
 
     while(true){
-        vTaskDelay(2000);
-    }
-    while(true){
         /* Task is only running when motor is truning */
         if(uxSemaphoreGetCount((M1 == id) ? motor_m1_mutex : motor_m2_mutex) == 0){
             ESP_LOGI(MOTOR_LOG_TAG,"M%i Motor task is suspending itself", id);
