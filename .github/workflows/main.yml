@@ -20,6 +20,7 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-tags: true
+        fetch-depth: 0
     - name: esp-idf build
       uses: Fishwaldo/esp-idf-ci-action@v1.1
       with:
