@@ -20,6 +20,7 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-tags: true
+        fetch-depth: 0
     - name: Rename artifact
       run: |
         git describe
