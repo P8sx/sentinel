@@ -1,8 +1,9 @@
 on:
   push:
   pull_request:
-    branches: [master]
-
+    tags:
+      - '*'
+      
 permissions:
   contents: write
 name: Build
@@ -28,6 +29,7 @@ jobs:
       run: |
         ls -lah 
         cp build/sentinel.bin sentinel-${{ matrix.targets }}.bin
+        git describe
     - name: Archive Firmware Files
       uses: actions/upload-artifact@v3
       with: 
