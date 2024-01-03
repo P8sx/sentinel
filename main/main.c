@@ -26,6 +26,7 @@ TaskHandle_t tcp_server_task_handle = NULL;
 TaskHandle_t motor_action_task_handle = NULL;
 TaskHandle_t motor_m1_task_handle = NULL;
 TaskHandle_t motor_m2_task_handle = NULL;
+ghota_client_handle_t *ghota_client = NULL;
 
 /* Default configuration */
 device_config_t device_config = {
@@ -90,13 +91,13 @@ void config_init(){
 
 void app_main(void)
 {
+    esp_log_level_set("event", ESP_LOG_NONE);
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(nvs_flash_init_partition("nvs_ext"));
 #if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
     save_config();
 #endif
     config_init();
-
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     io_init_outputs();
@@ -124,15 +125,16 @@ void app_main(void)
     ghota_config_t ghconfig = {
         .filenamematch = "sentinel-esp32s3.bin",
         .storagenamematch = "storage-esp32.bin",
-        .updateInterval = 1,
+        .updateInterval = 0,
     };
-    ghota_client_handle_t *ghota_client = ghota_init(&ghconfig);
+    ghota_client = ghota_init(&ghconfig);
     if (ghota_client == NULL) {
         ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
         return;
     }
     esp_event_handler_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &ghota_event_callback, ghota_client);
-    ESP_ERROR_CHECK(ghota_start_update_timer(ghota_client));
+    // ESP_ERROR_CHECK(ghota_start_update_timer(ghota_client));
+
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
         // uint64_t start = esp_timer_get_time();
@@ -143,6 +145,6 @@ void app_main(void)
         // ESP_LOGI("MAIN", "M1 PCNT:%i, M2 PCNT:%i\n", (int)io_get_pcnt_m1(),(int)io_get_pcnt_m2());
         // ESP_LOGI("MAIN", "M1 ANALOG:%i, M2 ANALOG:%i\n", (int)io_motor_get_current(M1),(int)io_motor_get_current(M2));
         // ESP_LOGI("MAIN", "M1:%s PCNT:%i ANALOG %i, M2:%s PCNT:%i ANALOG %i",STATES_STRING[control_get_motor_state(M1)], (int)io_get_pcnt_m1(), (int)io_get_analog_m1(), STATES_STRING[control_get_motor_state(M2)], (int)io_get_pcnt_m2(), (int)io_get_analog_m2());
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }

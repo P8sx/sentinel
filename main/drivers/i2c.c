@@ -69,7 +69,6 @@ void init_i2c_oled()
 {
 	if(!i2c_device_check(I2C_NUM_0, I2C_INT_OLED_ADDR)){
 		ESP_LOGE(I2C_LOG_TAG, "I2C oled not found, initialization aborted");
-		io_buzzer(2,50,50);
 		return;
 	}
 	else{

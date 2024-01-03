@@ -35,6 +35,10 @@
 #include <lwip/netdb.h>
 
 #include "io/control.h"
+#include "esp_ota_ops.h"
+#include <esp_ghota.h>
+
+extern ghota_client_handle_t *ghota_client;
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
@@ -184,7 +188,19 @@ static void tcp_receive_handle(const int sock)
             else if(strcmp(rx_buffer, "status") == 0){
                 snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[control_get_motor_state(M1)], (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)control_get_motor_open_pcnt(M1), (int)control_get_motor_close_pcnt(M1), STATES_STRING[control_get_motor_state(M2)], (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)control_get_motor_open_pcnt(M2), (int)control_get_motor_close_pcnt(M2));
             }
-
+            else if(strcmp(rx_buffer, "partition") == 0){
+                const esp_partition_t *test = esp_ota_get_boot_partition();
+                snprintf(tx_buffer, 128, "partition: %s, address: %i\n",test->label, (uint)test->address);
+            }
+            else if(strcmp(rx_buffer, "ota") == 0){
+                ESP_ERROR_CHECK(ghota_start_update_task(ghota_client));
+            }
+            else if(strcmp(rx_buffer, "veriosn") == 0){
+                semver_t *current_version = NULL, *latest_version = NULL;
+                current_version = ghota_get_current_version(ghota_client);
+                latest_version = ghota_get_latest_version(ghota_client);
+                snprintf(tx_buffer, 128, "Current version %i.%i.%i, Latest version %i.%i.%i",current_version->major, current_version->minor, current_version->patch, latest_version->major, latest_version->minor, latest_version->patch);
+            }
             int tx_len = 0;
             tx_len = strlen(tx_buffer);
             if(tx_len > 0 && tcp_socket > 0){
