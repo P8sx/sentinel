@@ -195,11 +195,10 @@ static void tcp_receive_handle(const int sock)
             else if(strcmp(rx_buffer, "ota") == 0){
                 ESP_ERROR_CHECK(ghota_start_update_task(ghota_client));
             }
-            else if(strcmp(rx_buffer, "veriosn") == 0){
+            else if(strcmp(rx_buffer, "version") == 0){
                 semver_t *current_version = NULL, *latest_version = NULL;
                 current_version = ghota_get_current_version(ghota_client);
-                latest_version = ghota_get_latest_version(ghota_client);
-                snprintf(tx_buffer, 128, "Current version %i.%i.%i, Latest version %i.%i.%i",current_version->major, current_version->minor, current_version->patch, latest_version->major, latest_version->minor, latest_version->patch);
+                snprintf(tx_buffer, 128, "Current version %i.%i.%i\n",current_version->major, current_version->minor, current_version->patch);
             }
             int tx_len = 0;
             tx_len = strlen(tx_buffer);
