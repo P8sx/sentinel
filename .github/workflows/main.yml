@@ -21,6 +21,8 @@ jobs:
         submodules: 'recursive'
         fetch-tags: true
         fetch-depth: 0
+    - name: Add version
+      run: git describe --tags | sed 's/-[^-]*$//' > version.txt
     - name: esp-idf build
       uses: Fishwaldo/esp-idf-ci-action@v1.1
       with:
@@ -31,7 +33,6 @@ jobs:
       run: |
         ls -lah 
         cp build/sentinel.bin sentinel-${{ matrix.targets }}.bin
-        git describe
     - name: Archive Firmware Files
       uses: actions/upload-artifact@v3
       with: 
