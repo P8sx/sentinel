@@ -38,7 +38,28 @@
 #include "esp_ota_ops.h"
 #include <esp_ghota.h>
 
-extern ghota_client_handle_t *ghota_client;
+static ghota_client_handle_t *ghota_client = NULL;
+static int tcp_socket = 0;
+
+
+static void control_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    ghota_client_handle_t *client = (ghota_client_handle_t *)arg;
+    ESP_LOGI(GHOTA_LOG_TAG, "Got Update Callback: %s", ghota_get_event_str(event_id));
+    if (event_id == GHOTA_EVENT_START_STORAGE_UPDATE) {
+        ESP_LOGI(GHOTA_LOG_TAG, "Starting storage update");
+        /* if we are updating the SPIFF storage we should unmount it */
+    } else if (event_id == GHOTA_EVENT_FINISH_STORAGE_UPDATE) {
+        ESP_LOGI(GHOTA_LOG_TAG, "Ending storage update");
+        /* after updating we can remount, but typically the device will reboot shortly after recieving this event. */
+    } else if (event_id == GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS) {
+        /* display some progress with the firmware update */
+        ESP_LOGI(GHOTA_LOG_TAG, "Firmware Update Progress: %d%%", *((int*) event_data));
+    } else if (event_id == GHOTA_EVENT_STORAGE_UPDATE_PROGRESS) {
+        /* display some progress with the spiffs partition update */
+        ESP_LOGI(GHOTA_LOG_TAG, "Storage Update Progress: %d%%", *((int*) event_data));
+    }
+    (void)client;
+}
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
@@ -59,7 +80,15 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     }
 }
 
+
+
+
+
 void wifi_init(){
+    if(0 == strlen(device_config.wifi_ssid) || 0 == strlen(device_config.wifi_ssid)){
+        ESP_LOGE(WIFI_LOG_TAG,"No SSID/Password provided WiFi init failed");
+        return;
+    }
     ESP_ERROR_CHECK(esp_netif_init());
     esp_netif_create_default_wifi_sta();
 
@@ -70,35 +99,16 @@ void wifi_init(){
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &wifi_event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &wifi_event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL));
 
     wifi_config_t wifi_config = {
         .sta = {
-#if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
-            .ssid = WIFI_SSID,
-            .password = WIFI_PASSWORD,
-#endif
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-            .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
-            .sae_h2e_identifier = "test",
         },
     };
-    
-#if !defined(WIFI_SSID) && !defined(WIFI_PASSWORD)
     memcpy(&(wifi_config.sta.ssid), &(device_config.wifi_ssid), sizeof(wifi_config.sta.ssid));
     memcpy(&(wifi_config.sta.password), &(device_config.wifi_password), sizeof(wifi_config.sta.password));
-#endif
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
@@ -106,7 +116,28 @@ void wifi_init(){
     ESP_LOGI(WIFI_LOG_TAG, "wifi_init_sta finished.");
 }
 
-static int tcp_socket = 0;
+void ota_init(){
+    wifi_ap_record_t ap_info;
+    if(ESP_OK != esp_wifi_sta_get_ap_info(&ap_info)){
+        ESP_LOGE(GHOTA_LOG_TAG, "WiFi not connected, ota initialization failed");
+        return;
+    }
+
+    ghota_config_t ghconfig = {
+        .filenamematch = "sentinel-esp32s3.bin",
+        .storagenamematch = "storage-esp32.bin",
+        .updateInterval = 0,
+    };
+    ghota_client = ghota_init(&ghconfig);
+    if (NULL == ghota_client) {
+        ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
+    }
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &control_ghota_event_handler, ghota_client, NULL));
+    ESP_LOGI(GHOTA_LOG_TAG, "Init successful");
+}
+
+
+
 
 
 static void tcp_receive_handle(const int sock)
@@ -186,7 +217,10 @@ static void tcp_receive_handle(const int sock)
                 xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "status") == 0){
-                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[control_get_motor_state(M1)], (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)control_get_motor_open_pcnt(M1), (int)control_get_motor_close_pcnt(M1), STATES_STRING[control_get_motor_state(M2)], (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)control_get_motor_open_pcnt(M2), (int)control_get_motor_close_pcnt(M2));
+                gate_status_t m1 = control_get_motor_state(M1);
+                gate_status_t m2 = control_get_motor_state(M2);
+
+                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[m1.state], (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)control_get_motor_open_pcnt(M1), (int)control_get_motor_close_pcnt(M1), STATES_STRING[m2.state], (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)control_get_motor_open_pcnt(M2), (int)control_get_motor_close_pcnt(M2));
             }
             else if(strcmp(rx_buffer, "partition") == 0){
                 const esp_partition_t *test = esp_ota_get_boot_partition();
@@ -196,7 +230,7 @@ static void tcp_receive_handle(const int sock)
                 ESP_ERROR_CHECK(ghota_start_update_task(ghota_client));
             }
             else if(strcmp(rx_buffer, "version") == 0){
-                semver_t *current_version = NULL, *latest_version = NULL;
+                semver_t *current_version = NULL;
                 current_version = ghota_get_current_version(ghota_client);
                 snprintf(tx_buffer, 128, "Current version %i.%i.%i\n",current_version->major, current_version->minor, current_version->patch);
             }
@@ -222,6 +256,7 @@ static void tcp_receive_handle(const int sock)
     } while (len > 0);
 
 }
+
 void tcp_server_task(void *pvParameters)
 {
     char addr_str[128];

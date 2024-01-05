@@ -4,6 +4,10 @@
 #include "common/config.h"
 #include "io/io.h"
 #include "math.h"
+#include "esp_ghota.h"
+#include "esp_err.h"
+
+ESP_EVENT_DEFINE_BASE(MOTOR_EVENTS);
 
 /* extern variables */
 QueueHandle_t motor_action_queue = NULL;
@@ -15,6 +19,24 @@ static motor_t m2 = {.id = M2, .state = CLOSED};
 
 static SemaphoreHandle_t motor_m1_mutex = NULL;
 static SemaphoreHandle_t motor_m2_mutex = NULL;
+static SemaphoreHandle_t motor_action_mutex = NULL;
+
+static void control_open(motor_t *motor);
+static void control_close(motor_t *motor);
+static void control_stop(motor_t *motor, uint8_t ext_stop);
+
+
+static void control_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    if (event_id == GHOTA_EVENT_START_UPDATE) {
+        ESP_LOGI(MOTOR_LOG_TAG, "Starting OTA update disabling motor controll");
+        control_stop(&m1, true);
+        control_stop(&m2, true);
+        xSemaphoreTake(motor_action_mutex, portMAX_DELAY);
+    } else if (event_id == GHOTA_EVENT_FINISH_UPDATE) {
+        ESP_LOGI(MOTOR_LOG_TAG, "Ending sOTA update, enabling motor controll");
+        xSemaphoreGive(motor_action_mutex);
+    }
+}
 
 static void control_open(motor_t *motor){
     if(atomic_load(&(motor->state)) == OPENING) return;
@@ -32,6 +54,9 @@ static void control_open(motor_t *motor){
     io_motor_dir(id,0);
     vTaskDelay(pdMS_TO_TICKS(15));
     io_motor_fade(id,1023, 1000);
+
+    gate_status_t gate_state = control_get_motor_state(id);
+    esp_event_post(MOTOR_EVENTS, MOTOR_STATUS_CHANGED, &gate_state, sizeof(gate_status_t), pdMS_TO_TICKS(100));
 }
 
 static void control_close(motor_t *motor){
@@ -50,12 +75,15 @@ static void control_close(motor_t *motor){
     io_motor_dir(id,1);
     vTaskDelay(pdMS_TO_TICKS(15));
     io_motor_fade(id,1023, 1000);
+
+    gate_status_t gate_state = control_get_motor_state(id);
+    esp_event_post(MOTOR_EVENTS, MOTOR_STATUS_CHANGED, &gate_state, sizeof(gate_status_t), pdMS_TO_TICKS(100));
 }
 
 static void control_stop(motor_t *motor, uint8_t ext_stop){
     motor_id_t id = motor->id;
 
-    gate_states_t state = atomic_load(&(motor->state));
+    gate_state_t state = atomic_load(&(motor->state));
     /* If stop is issued by user/error etc. change state to stopped_.... */
     if (ext_stop) {
         if (state == OPENING) {
@@ -80,6 +108,8 @@ static void control_stop(motor_t *motor, uint8_t ext_stop){
     xSemaphoreTake((M1 == id) ? motor_m1_mutex : motor_m2_mutex, 0);
     io_motor_stop(id);
 
+    gate_status_t gate_state = control_get_motor_state(id);
+    esp_event_post(MOTOR_EVENTS, MOTOR_STATUS_CHANGED, &gate_state, sizeof(gate_status_t), pdMS_TO_TICKS(100));
 }
 
 void next_state(motor_t *motor){
@@ -113,8 +143,12 @@ void next_state(motor_t *motor){
     }
 }
 
-gate_states_t control_get_motor_state(motor_id_t id){
-    return (M1 == id) ? atomic_load(&(m1.state)) : atomic_load(&(m2.state));
+gate_status_t control_get_motor_state(motor_id_t id){
+    gate_status_t status = {
+        .id = id,
+        .state = (M1 == id) ? atomic_load(&(m1.state)) : atomic_load(&(m2.state))
+    };
+    return status;
 }
 int16_t control_get_motor_open_pcnt(motor_id_t id){
     return (M1 == id) ? atomic_load(&(m1.open_pcnt)) : atomic_load(&(m2.open_pcnt));
@@ -128,6 +162,10 @@ void control_motor_init(){
     motor_action_queue = xQueueCreate(5, sizeof(gate_command_t));
     motor_m1_mutex = xSemaphoreCreateBinary();
     motor_m2_mutex = xSemaphoreCreateBinary();
+    motor_action_mutex = xSemaphoreCreateBinary();
+
+    io_motor_stop(M1);
+    io_motor_stop(M2);
 
     atomic_init(&(m1.open_pcnt), 0);
     atomic_init(&(m1.close_pcnt), 0);
@@ -141,14 +179,17 @@ void control_motor_init(){
     atomic_init(&(m2.open_pcnt_cal), false);
     atomic_init(&(m2.close_pcnt_cal), false);
 
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &control_ghota_event_handler, NULL, NULL));
+
     xSemaphoreTake(motor_m1_mutex, 0);
     xSemaphoreTake(motor_m2_mutex, 0);
+    xSemaphoreGive(motor_action_mutex);
 }
 
 void motor_action_task(void *pvParameters){
     static gate_command_t command;
     while(true){
-        if (xQueueReceive(motor_action_queue, &command, portMAX_DELAY)) {
+        if (xQueueReceive(motor_action_queue, &command, portMAX_DELAY) && xSemaphoreTake(motor_action_mutex, portMAX_DELAY)) {
             motor_t *current_motor = (M1 == command.id) ? &m1 : &m2;
             switch (command.action){
                 case OPEN:
@@ -171,6 +212,7 @@ void motor_action_task(void *pvParameters){
                     control_close(current_motor);
                     break;
             }
+            xSemaphoreGive(motor_action_mutex);
         }
         taskYIELD();
     }
@@ -239,7 +281,7 @@ void motor_task(void *pvParameters){
         //     int16_t close_pcnt = control_get_motor_close_pcnt(id);
         //     int32_t total_distance = abs(open_pcnt) + abs(close_pcnt);
 
-        //     gate_states_t current_state = control_get_motor_state(id);
+        //     gate_state_t current_state = control_get_motor_state(id);
         //     if(current_state == CLOSING){
         //         int16_t slow_down_point = close_pcnt + total_distance * 0.20;
         //         int16_t current_pcnt = io_motor_get_pcnt(id);

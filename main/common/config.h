@@ -12,7 +12,7 @@ extern device_config_t device_config;
 #define M2_SENSE_CHANNEL        ADC_CHANNEL_0              // GPIO1
 #define ADC_ATTEN               ADC_ATTEN_DB_2_5
 #define SHUNT_VALUE             10                          // in milliohms
-#define OP_AMP_GAIN             20
+#define OP_AMP_GAIN             20                          // OP Amp gain for B1 is 20
 
 /* RF Pins*/
 #define RF_RECEIVER_PIN         GPIO_NUM_42
@@ -63,7 +63,7 @@ extern device_config_t device_config;
 #define I2C_EXT_SDA_PIN         GPIO_NUM_7
 #define I2C_EXT_SCL_PIN         GPIO_NUM_15
 
-#define I2C_INT_FREQ            100000
+#define I2C_INT_FREQ            400000
 #define I2C_INT_TIMEOUT_MS      1000
 #define I2C_INT_SDA_PIN         GPIO_NUM_21
 #define I2C_INT_SCL_PIN         GPIO_NUM_47

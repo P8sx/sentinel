@@ -2,7 +2,7 @@ on:
   push:
   pull_request:
     tags:
-      - '*'
+      - 'v*'
       
 permissions:
   contents: write
@@ -11,8 +11,6 @@ jobs:
   build:
     strategy:
       fail-fast: true
-      matrix: 
-        targets: [esp32s3]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repo
@@ -21,23 +19,27 @@ jobs:
         submodules: 'recursive'
         fetch-tags: true
         fetch-depth: 0
+
     - name: Add version
       run: git describe --tags | sed 's/-[^-]*$//' > version.txt
+
     - name: esp-idf build
-      uses: Fishwaldo/esp-idf-ci-action@v1.1
+      uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: v5.1.2
-        target: ${{ matrix.targets }}
+        target: esp32s3
         path: './'
+
     - name: Rename artifact
       run: |
         ls -lah 
-        cp build/sentinel.bin sentinel-${{ matrix.targets }}.bin
+        cp build/sentinel.bin sentinel-esp32s3.bin
+
     - name: Archive Firmware Files
       uses: actions/upload-artifact@v3
       with: 
-        name: ${{ matrix.targets }}-firmware
-        path: "*-${{ matrix.targets }}.bin"
+        name: esp32s3-firmware
+        path: "*-esp32s3.bin"
 
   release:
     needs: build

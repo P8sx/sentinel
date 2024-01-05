@@ -41,14 +41,14 @@ void io_init_inputs(){
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
-    gpio_config_t rf_config = {
-        .intr_type = GPIO_INTR_ANYEDGE,
-        .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = RF_RECEIVER_PIN,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE
-    };
-    ESP_ERROR_CHECK(gpio_config(&rf_config));
+    // gpio_config_t rf_config = {
+    //     .intr_type = GPIO_INTR_DISABLE,
+    //     .mode = GPIO_MODE_INPUT,
+    //     .pin_bit_mask = (1ULL<<RF_RECEIVER_PIN),
+    //     .pull_up_en = GPIO_PULLUP_DISABLE,
+    //     .pull_down_en = GPIO_PULLDOWN_DISABLE
+    // };
+    // ESP_ERROR_CHECK(gpio_config(&rf_config));
 
 }
 

@@ -19,7 +19,7 @@ typedef enum gate_action_t{
     NEXT_STATE,
 } gate_action_t;
 
-typedef enum gate_states_t {
+typedef enum gate_state_t {
     OPENED,
     OPENING,
     CLOSED,
@@ -27,7 +27,13 @@ typedef enum gate_states_t {
     STOPPED_OPENING,
     STOPPED_CLOSING,
     UNKNOWN,
-} gate_states_t;
+} gate_state_t;
+
+
+typedef struct gate_status_t{
+    motor_id_t id;
+    gate_state_t state;
+} gate_status_t;
 
 typedef struct gate_command_t{
     motor_id_t id;
@@ -35,14 +41,7 @@ typedef struct gate_command_t{
 } gate_command_t;
 
 
-typedef struct motor_t {
-    atomic_uint_fast8_t state;
-    const motor_id_t id; 
-    atomic_bool open_pcnt_cal;
-    atomic_bool close_pcnt_cal;
-    atomic_int_fast16_t open_pcnt;
-    atomic_int_fast16_t close_pcnt;
-} motor_t;
+
 
 typedef enum input_action_t {
     M1_OPEN,
@@ -59,6 +58,7 @@ typedef enum input_action_t {
     M_NEXT_STATE,
 } input_action_t;
 
+
 typedef struct device_config_t{
     char wifi_ssid[32];
     char wifi_password[64];
@@ -68,6 +68,7 @@ typedef struct device_config_t{
 
     bool m1_dir;
     bool m2_dir;
+
     uint16_t m1_ocp_treshold;
     uint16_t m2_ocp_treshold;
     uint16_t m1_ocp_count;
@@ -77,6 +78,7 @@ typedef struct device_config_t{
     uint8_t output_actions[2];
 
 } device_config_t;
+
 
 typedef struct rf_remote_config_t{
     uint64_t id;

@@ -4,6 +4,8 @@
 #include "esp_err.h"
 #include "common/types.h"
 
+
+
 void io_init_outputs();
 void io_init_inputs();
 void io_init_analog();
