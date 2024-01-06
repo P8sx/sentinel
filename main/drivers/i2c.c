@@ -88,7 +88,7 @@ void init_i2c_oled()
 	i2c_oled_initialized = true;
 }
 
-void i2c_oled_power_saver(bool enable){
+void i2c_oled_power_save(bool enable){
 	static bool status = false;
 	if(status != enable){
 		u8g2_SetPowerSave(&u8g2, enable);
@@ -107,5 +107,20 @@ void i2c_oled_welcome_screen(){
     u8g2_DrawStr(&u8g2, 8, 36, "SW Ver:");
     u8g2_DrawStr(&u8g2, 66, 36, desc->version);
 
+	u8g2_SendBuffer(&u8g2);
+}
+
+void i2c_oled_ota_update(uint8_t progress){
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_DrawFrame(&u8g2, 8, 19, 112, 20);
+	u8g2_DrawBox(&u8g2, 10, 21, progress+8, 16);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	u8g2_DrawStr(&u8g2, 35,14, "OTA Update");
+	u8g2_DrawStr(&u8g2, 25,51, "Progress:");
+	char progress_text[5];
+    snprintf(progress_text, sizeof(progress_text), "%d%%", progress);
+	u8g2_DrawStr(&u8g2, 76,51, progress_text);
 	u8g2_SendBuffer(&u8g2);
 }

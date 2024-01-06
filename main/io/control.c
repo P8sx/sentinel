@@ -9,6 +9,9 @@
 #include "gate.h"
 #include "drivers/i2c.h"
 #include "io.h"
+#include "esp_event.h"
+#include "esp_err.h"
+#include "esp_ghota.h"
 
 static TimerHandle_t screen_saver_timer = NULL;
 static SemaphoreHandle_t control_oled_task_mutex = NULL;
@@ -16,8 +19,19 @@ extern TaskHandle_t control_oled_task_handle;
 extern QueueHandle_t gate_action_queue;
 QueueHandle_t input_queue = NULL;
 
+
+static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    if (event_id == GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS) {
+        xTimerReset(screen_saver_timer, 0);
+        i2c_oled_power_save(false);
+        i2c_oled_ota_update(*((int*) event_data));
+    } 
+}
+
+
+
 void screen_saver_timer_callback(TimerHandle_t xTimer) {
-    i2c_oled_power_saver(true);
+    i2c_oled_power_save(true);
     /* Take semaphore to lock task */
     xSemaphoreTake(control_oled_task_mutex, 0);
 }
@@ -29,20 +43,23 @@ void control_init(){
 
     xSemaphoreGive(control_oled_task_mutex);
     xTimerStart(screen_saver_timer, 0);
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &gate_ghota_event_handler, NULL, NULL));
+
 }
 
 
 void control_oled_handling_task(void *pvParameters){
-    i2c_oled_power_saver(false);
+    i2c_oled_power_save(false);
 	i2c_oled_welcome_screen();
     while(1){
         if(uxSemaphoreGetCount(control_oled_task_mutex) == 0){
             ESP_LOGI("CONTROL","Suspending itself");
             vTaskSuspend(NULL);
-            i2c_oled_power_saver(false);
+            i2c_oled_power_save(false);
         }
         ESP_LOGI("CONTROL","SR-OLED");
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(1500));
     }
 }
 
