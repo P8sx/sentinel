@@ -193,27 +193,19 @@ static void tcp_receive_handle(const int sock)
                 xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "open") == 0){
-                gate_command_t cmd = {.action = OPEN, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
-                cmd.id = M2;
+                gate_command_t cmd = {.action = OPEN, .id = M1M2};
                 xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "close") == 0){
-                gate_command_t cmd = {.action = CLOSE, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
-                cmd.id = M2;
+                gate_command_t cmd = {.action = CLOSE, .id = M1M2};
                 xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "stop") == 0){
-                gate_command_t cmd = {.action = STOP, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
-                cmd.id = M2;
+                gate_command_t cmd = {.action = STOP, .id = M1M2};
                 xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "next") == 0){
-                gate_command_t cmd = {.action = NEXT_STATE, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
-                cmd.id = M2;
+                gate_command_t cmd = {.action = NEXT_STATE, .id = M1M2};
                 xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "status") == 0){

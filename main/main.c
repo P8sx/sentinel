@@ -28,6 +28,7 @@ TaskHandle_t motor_action_task_handle = NULL;
 TaskHandle_t gate_m1_task_handle = NULL;
 TaskHandle_t gate_m2_task_handle = NULL;
 TaskHandle_t control_input_task_handle = NULL;
+TaskHandle_t control_oled_task_handle = NULL;
 
 void app_main(void)
 {
@@ -57,9 +58,9 @@ void app_main(void)
     xTaskCreatePinnedToCore(gate_action_task, "gate_action_task", 4096, NULL, configMAX_PRIORITIES - 1, &motor_action_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m1_task", 4096, (void *)M1, configMAX_PRIORITIES - 1, &gate_m1_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m2_task", 4096, (void *)M2, configMAX_PRIORITIES - 1, &gate_m2_task_handle, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(control_input_handling_task, "input_task", 4096, NULL, configMAX_PRIORITIES - 1, &control_input_task_handle, PRO_CPU_NUM);
+    if(i2c_oled_init_state()) xTaskCreatePinnedToCore(control_oled_handling_task, "oled_task", 4096, NULL, 5, &control_oled_task_handle, APP_CPU_NUM);
 
-    xTaskCreatePinnedToCore(control_input_task, "control_input_task", 4096, NULL, 5, &control_input_task_handle, PRO_CPU_NUM);
-    
     rf433_init();
     ota_init();
 

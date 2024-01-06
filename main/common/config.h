@@ -5,7 +5,6 @@
 #include "common/types.h"
 
 extern device_config_t device_config;
-
 void config_init();
 
 

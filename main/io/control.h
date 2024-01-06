@@ -11,12 +11,11 @@
 #include "freertos/timers.h"
 #include "driver/gpio.h"
 
+extern QueueHandle_t input_queue; 
 
-void control_input_task(void *pvParameters);
+void control_input_handling_task(void *pvParameters);
+void control_oled_handling_task(void *pvParameters);
 void control_init();
 
-void IRAM_ATTR input_isr_handler(void* arg);
-void IRAM_ATTR button_isr_handler(void* arg);
-void IRAM_ATTR endstop_isr_handler(void* arg);
 
 #endif

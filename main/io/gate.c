@@ -6,6 +6,7 @@
 #include "math.h"
 #include "esp_ghota.h"
 #include "esp_err.h"
+#include "control.h"
 
 ESP_EVENT_DEFINE_BASE(GATE_EVENTS);
 /* extern variables */
@@ -27,7 +28,6 @@ static void gate_close(gate_t *motor);
 static void gate_stop(gate_t *motor, bool hw_stop);
 
 static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-
 
 
 void gate_motor_init(){
@@ -200,41 +200,83 @@ int16_t gate_get_motor_close_pcnt(motor_id_t id){
 }
 
 
-void gate_action_task(void *pvParameters){
+void gate_action_task(void *pvParameters) {
     static gate_command_t command;
-    while(true){
+    while (true) {
         if (xQueueReceive(gate_action_queue, &command, portMAX_DELAY) && xSemaphoreTake(gate_action_task_mutex, portMAX_DELAY)) {
-            gate_t *current_motor = (M1 == command.id) ? &m1 : &m2;
-            switch (command.action){
+            gate_t *current_motor = (M1M2 != command.id) ? ((M1 == command.id) ? &m1 : &m2) : NULL;
+
+            switch (command.action) {
                 case OPEN:
-                    gate_open(current_motor);
-                    ESP_LOGI(GATE_CONTROL_LOG_TAG,"opening M%i",command.id);
+                    if (current_motor) {
+                        gate_open(current_motor);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "opening M%i", command.id);
+                    } else {
+                        gate_open(&m1);
+                        gate_open(&m2);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "opening M1 and M2");
+                    }
                     break;
+
                 case CLOSE:
-                    gate_close(current_motor);
-                    ESP_LOGI(GATE_CONTROL_LOG_TAG,"closing M%i",command.id);
+                    if (current_motor) {
+                        gate_close(current_motor);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "closing M%i", command.id);
+                    } else {
+                        gate_close(&m1);
+                        gate_close(&m2);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "closing M1 and M2");
+                    }
                     break;
+
                 case STOP:
-                    gate_stop(current_motor, false);
-                    ESP_LOGI(GATE_CONTROL_LOG_TAG,"stopping M%i",command.id);
+                    if (current_motor) {
+                        gate_stop(current_motor, false);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "stopping M%i", command.id);
+                    } else {
+                        gate_stop(&m1, false);
+                        gate_stop(&m2, false);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "stopping M1 and M2");
+                    }
                     break;
+
                 case NEXT_STATE:
-                    gate_next_state(current_motor);
+                    if (current_motor) {
+                        gate_next_state(current_motor);
+                    } else {
+                        gate_next_state(&m1);
+                        gate_next_state(&m2);
+                    }
                     break;
+
                 case HW_STOP:
-                    gate_stop(current_motor, true);
-                    ESP_LOGI(GATE_CONTROL_LOG_TAG,"stopping M%i",command.id);
+                    if (current_motor) {
+                        gate_stop(current_motor, true);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "stopping M%i", command.id);
+                    } else {
+                        gate_stop(&m1, true);
+                        gate_stop(&m2, true);
+                        ESP_LOGI(GATE_CONTROL_LOG_TAG, "stopping M1 and M2");
+                    }
                     break;
+
                 default:
                     /* Should never reach but... */
-                    gate_close(current_motor);
+                    if (current_motor) {
+                        gate_close(current_motor);
+                    } else {
+                        gate_close(&m1);
+                        gate_close(&m2);
+                    }
                     break;
             }
+
             xSemaphoreGive(gate_action_task_mutex);
         }
         taskYIELD();
     }
 }
+
 
 void gate_task(void *pvParameters){
     motor_id_t id = (motor_id_t)pvParameters;
@@ -270,7 +312,7 @@ void gate_task(void *pvParameters){
         if(no_current_stop > 30){
             no_current_stop = 0;
             ESP_LOGW(GATE_LOG_TAG,"M%i Motor task is stopping mottor", id);
-            xQueueSendToFront(gate_action_queue, GATE_CMD(HW_STOP, id), pdMS_TO_TICKS(10));
+            xQueueSendToFront(gate_action_queue, &GATE_CMD(HW_STOP, id), pdMS_TO_TICKS(10));
         }
 
 
@@ -284,7 +326,7 @@ void gate_task(void *pvParameters){
         }
         if(ocp_count > cfg_ocp_count){
             ESP_LOGE(GATE_LOG_TAG,"M%i Motor task is stopping mottor due to overcurrent event", id);
-            xQueueSendToFront(gate_action_queue, GATE_CMD(STOP, id), pdMS_TO_TICKS(10));
+            xQueueSendToFront(gate_action_queue, &GATE_CMD(STOP, id), pdMS_TO_TICKS(10));
             io_buzzer(5, 50, 50);
         }
 

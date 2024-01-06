@@ -8,8 +8,12 @@
 #include <u8g2.h>
 #include "esp_app_desc.h"
 
+static bool i2c_oled_initialized = false;
 static u8g2_t u8g2;
 
+bool i2c_oled_init_state(){
+	return i2c_oled_initialized;
+}
 static uint8_t u8g2_hal_i2c_byte(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, void* arg_ptr) {
 	static i2c_cmd_handle_t int_handle_i2c = NULL;
 	switch (msg) {
@@ -81,6 +85,7 @@ void init_i2c_oled()
 	u8x8_SetI2CAddress(&u8g2.u8x8, I2C_INT_OLED_ADDR);
 	u8g2_InitDisplay(&u8g2);
 	u8g2_SetPowerSave(&u8g2, false);
+	i2c_oled_initialized = true;
 }
 
 void i2c_oled_power_saver(bool enable){
@@ -91,7 +96,7 @@ void i2c_oled_power_saver(bool enable){
 	}
 }
 
-void i2c_oled_init_screen(){
+void i2c_oled_welcome_screen(){
 
 	const esp_app_desc_t *desc = esp_app_get_description();
     u8g2_ClearBuffer(&u8g2);

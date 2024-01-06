@@ -23,6 +23,27 @@ static adc_cali_handle_t adc1_cali_m1_handle = NULL;
 static adc_cali_handle_t adc1_cali_m2_handle = NULL;
 static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
+
+static void IRAM_ATTR isr_handler(void* arg) {
+    extern QueueHandle_t input_queue; 
+    static TickType_t last_interrupt_time[11] = {0};
+    TickType_t current_time = xTaskGetTickCountFromISR();
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    const uint8_t pins[] = {BTN1_PIN, BTN2_PIN, BTN3_PIN, 
+                            INPUT1_PIN, INPUT2_PIN, INPUT3_PIN, INPUT4_PIN,
+                            ENDSTOP_M1_A_PIN, ENDSTOP_M1_B_PIN, ENDSTOP_M2_A_PIN, ENDSTOP_M2_B_PIN};
+    const TickType_t debounce_times[] = {pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), 
+                                        pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500),
+                                        pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500)};
+    for (int i = 0; i < 11; ++i) {
+        if (pins[i] == (uint8_t)arg && current_time - last_interrupt_time[i] > debounce_times[i]) {
+            last_interrupt_time[i] = current_time;
+            xQueueSendFromISR(input_queue, &arg, &xHigherPriorityTaskWoken);
+            break;
+        }
+    }
+}
+
 void io_init_inputs(){
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
     gpio_config_t btn_conf = {
@@ -33,9 +54,9 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&btn_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN1_PIN, button_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN2_PIN, button_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN3_PIN, button_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN1_PIN, isr_handler, (void*)BTN1_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN2_PIN, isr_handler, (void*)BTN2_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN3_PIN, isr_handler, (void*)BTN3_PIN));
  
     gpio_config_t io_conf = {
         .intr_type = GPIO_INTR_NEGEDGE,
@@ -45,10 +66,10 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT1_PIN, input_isr_handler, (void*)INPUT1_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT2_PIN, input_isr_handler, (void*)INPUT2_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT3_PIN, input_isr_handler, (void*)INPUT3_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT4_PIN, input_isr_handler, (void*)INPUT4_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT1_PIN, isr_handler, (void*)INPUT1_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT2_PIN, isr_handler, (void*)INPUT2_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT3_PIN, isr_handler, (void*)INPUT3_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT4_PIN, isr_handler, (void*)INPUT4_PIN));
 
     gpio_config_t endstop_io_conf = {
         .intr_type = GPIO_INTR_NEGEDGE,
@@ -58,10 +79,10 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&endstop_io_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_A_PIN, endstop_isr_handler, (void*)ENDSTOP_M1_A_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_B_PIN, endstop_isr_handler, (void*)ENDSTOP_M1_B_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_A_PIN, endstop_isr_handler, (void*)ENDSTOP_M2_A_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_B_PIN, endstop_isr_handler, (void*)ENDSTOP_M2_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_A_PIN, isr_handler, (void*)ENDSTOP_M1_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_B_PIN, isr_handler, (void*)ENDSTOP_M1_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_A_PIN, isr_handler, (void*)ENDSTOP_M2_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_B_PIN, isr_handler, (void*)ENDSTOP_M2_B_PIN));
 
     // gpio_config_t rf_config = {
     //     .intr_type = GPIO_INTR_DISABLE,
