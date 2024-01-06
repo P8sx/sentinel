@@ -34,7 +34,7 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 
-#include "io/control.h"
+#include "io/gate.h"
 #include "esp_ota_ops.h"
 #include <esp_ghota.h>
 
@@ -42,7 +42,7 @@ static ghota_client_handle_t *ghota_client = NULL;
 static int tcp_socket = 0;
 
 
-static void control_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     ghota_client_handle_t *client = (ghota_client_handle_t *)arg;
     ESP_LOGI(GHOTA_LOG_TAG, "Got Update Callback: %s", ghota_get_event_str(event_id));
     if (event_id == GHOTA_EVENT_START_STORAGE_UPDATE) {
@@ -132,7 +132,7 @@ void ota_init(){
     if (NULL == ghota_client) {
         ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
     }
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &control_ghota_event_handler, ghota_client, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &gate_ghota_event_handler, ghota_client, NULL));
     ESP_LOGI(GHOTA_LOG_TAG, "Init successful");
 }
 
@@ -217,10 +217,10 @@ static void tcp_receive_handle(const int sock)
                 xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "status") == 0){
-                gate_status_t m1 = control_get_motor_state(M1);
-                gate_status_t m2 = control_get_motor_state(M2);
+                gate_status_t m1 = gate_get_motor_state(M1);
+                gate_status_t m2 = gate_get_motor_state(M2);
 
-                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[m1.state], (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)control_get_motor_open_pcnt(M1), (int)control_get_motor_close_pcnt(M1), STATES_STRING[m2.state], (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)control_get_motor_open_pcnt(M2), (int)control_get_motor_close_pcnt(M2));
+                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[m1.state], (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)gate_get_motor_open_pcnt(M1), (int)gate_get_motor_close_pcnt(M1), STATES_STRING[m2.state], (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)gate_get_motor_open_pcnt(M2), (int)gate_get_motor_close_pcnt(M2));
             }
             else if(strcmp(rx_buffer, "partition") == 0){
                 const esp_partition_t *test = esp_ota_get_boot_partition();

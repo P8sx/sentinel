@@ -21,6 +21,7 @@ static adc_cali_handle_t adc1_cali_m1_handle = NULL;
 static adc_cali_handle_t adc1_cali_m2_handle = NULL;
 static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
+
 void io_init_inputs(){
 
     gpio_config_t btn_conf = {
@@ -78,7 +79,6 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
     esp_err_t ret = ESP_FAIL;
     bool calibrated = false;
 
-#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
     if (!calibrated) {
         ESP_LOGI("ADC", "calibration scheme version is %s", "Curve Fitting");
         adc_cali_curve_fitting_config_t cali_config = {
@@ -92,22 +92,6 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
             calibrated = true;
         }
     }
-#endif
-
-#if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
-    if (!calibrated) {
-        ESP_LOGI("ADC", "calibration scheme version is %s", "Line Fitting");
-        adc_cali_line_fitting_config_t cali_config = {
-            .unit_id = unit,
-            .atten = atten,
-            .bitwidth = ADC_BITWIDTH_12,
-        };
-        ret = adc_cali_create_scheme_line_fitting(&cali_config, &handle);
-        if (ret == ESP_OK) {
-            calibrated = true;
-        }
-    }
-#endif
 
     *out_handle = handle;
     if (ret == ESP_OK) {
@@ -219,6 +203,8 @@ void io_init_pcnt(){
     ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_m2));
 }
 
+
+
 void io_motor_dir(motor_id_t id, uint8_t clockwise) {
     pcnt_channel_handle_t pcnt_channel;
     gpio_num_t relay_pin_a, relay_pin_b;
@@ -276,7 +262,6 @@ void io_motor_pwm(motor_id_t id, uint32_t freq){
 
 }
 
-
 void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time){
     if(M1 == id){
         ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, target, time);
@@ -309,7 +294,6 @@ uint16_t io_motor_get_current(motor_id_t id){
     return (uint16_t)(current * 1000);
 }
 
-
 void io_buzzer(uint8_t counts, uint16_t on_period, uint16_t off_period){
        for (uint8_t i = 0; i < counts; ++i) {
         gpio_set_level(BUZZER_PIN, 1);
@@ -318,3 +302,4 @@ void io_buzzer(uint8_t counts, uint16_t on_period, uint16_t off_period){
         vTaskDelay(pdMS_TO_TICKS(off_period));
     }
 }
+

@@ -6,6 +6,8 @@
 
 extern device_config_t device_config;
 
+void config_init();
+
 
 /* Analog PINS */
 #define M1_SENSE_CHANNEL        ADC_CHANNEL_1              // GPIO2
@@ -85,7 +87,9 @@ extern device_config_t device_config;
 #define WIFI_LOG_TAG            "WIFI"
 #define I2C_LOG_TAG             "I2C"
 #define TCP_LOG_TAG             "TCP"
-#define MOTOR_CONTROL_LOG_TAG   "MT-CTRL"
-#define MOTOR_LOG_TAG           "MT"
+#define GATE_CONTROL_LOG_TAG    "MT-CTRL"
+#define GATE_LOG_TAG            "MT"
 #define GHOTA_LOG_TAG           "GHOTA"
+
+
 #endif
