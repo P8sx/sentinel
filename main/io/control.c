@@ -96,13 +96,15 @@ void IRAM_ATTR endstop_isr_handler(void* arg){
 
 
 void control_input_task(void *pvParameters){
+    i2c_oled_power_saver(false);
+	i2c_oled_init_screen();
     while(1){
         if(uxSemaphoreGetCount(control_input_task_mutex) == 0){
             ESP_LOGI("CONTROL","Suspending itself");
             vTaskSuspend(NULL);
             i2c_oled_power_saver(false);
         }
-        ESP_LOGI("CONTROL","SROLED");
+        ESP_LOGI("CONTROL","SR-OLED");
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
