@@ -103,7 +103,7 @@ ghota_client_handle_t *ghota_init(ghota_config_t *newconfig) {
     else
         asprintf(&handle->config.reponame, newconfig->reponame);
 
-    const esp_app_desc_t *app_desc = esp_ota_get_app_description();
+    const esp_app_desc_t *app_desc = esp_app_get_description();
     if (semver_parse(app_desc->version, &handle->current_version)) {
         ESP_LOGE(TAG, "Failed to parse current version");
         ghota_free(handle);

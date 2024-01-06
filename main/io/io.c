@@ -4,12 +4,14 @@
 #include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "driver/pulse_cnt.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_log.h"
-
+#include "gate.h"
+#include "control.h"
 
 static pcnt_unit_handle_t pcnt_unit_m1 = NULL;
 static pcnt_unit_handle_t pcnt_unit_m2 = NULL;
@@ -21,26 +23,45 @@ static adc_cali_handle_t adc1_cali_m1_handle = NULL;
 static adc_cali_handle_t adc1_cali_m2_handle = NULL;
 static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
-
 void io_init_inputs(){
-
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));
     gpio_config_t btn_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE,
         .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = ((1ULL<<BTN1_PIN) | (1ULL<<BTN2_PIN) | (1ULL<<BTN3_PIN)) ,
+        .pin_bit_mask = ((1ULL<<BTN1_PIN) | (1ULL<<BTN2_PIN) | (1ULL<<BTN3_PIN)),
         .pull_up_en = 0,
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&btn_conf));
-    
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN1_PIN, button_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN2_PIN, button_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN3_PIN, button_isr_handler, NULL));
+ 
     gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE,
         .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = ((1ULL<<INPUT1_PIN) | (1ULL<<INPUT2_PIN) | (1ULL<<INPUT3_PIN) | (1ULL<<INPUT4_PIN) | (1ULL<<INPUT5_PIN) | (1ULL<<INPUT6_PIN) | (1ULL<<INPUT7_PIN) | (1ULL<<INPUT8_PIN))  ,
+        .pin_bit_mask = ((1ULL<<INPUT1_PIN) | (1ULL<<INPUT2_PIN) | (1ULL<<INPUT3_PIN) | (1ULL<<INPUT4_PIN)),
         .pull_up_en = 0,
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT1_PIN, input_isr_handler, (void*)INPUT1_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT2_PIN, input_isr_handler, (void*)INPUT2_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT3_PIN, input_isr_handler, (void*)INPUT3_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT4_PIN, input_isr_handler, (void*)INPUT4_PIN));
+
+    gpio_config_t endstop_io_conf = {
+        .intr_type = GPIO_INTR_NEGEDGE,
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = ((1ULL<<ENDSTOP_M1_A_PIN) | (1ULL<<ENDSTOP_M2_A_PIN) | (1ULL<<ENDSTOP_M1_B_PIN) | (1ULL<<ENDSTOP_M2_B_PIN)),
+        .pull_up_en = 0,
+        .pull_down_en = 0
+    };
+    ESP_ERROR_CHECK(gpio_config(&endstop_io_conf));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_A_PIN, endstop_isr_handler, (void*)ENDSTOP_M1_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_B_PIN, endstop_isr_handler, (void*)ENDSTOP_M1_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_A_PIN, endstop_isr_handler, (void*)ENDSTOP_M2_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_B_PIN, endstop_isr_handler, (void*)ENDSTOP_M2_B_PIN));
 
     // gpio_config_t rf_config = {
     //     .intr_type = GPIO_INTR_DISABLE,

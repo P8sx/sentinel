@@ -51,10 +51,10 @@ void config_init();
 #define INPUT3_PIN              GPIO_NUM_10
 #define INPUT4_PIN              GPIO_NUM_11
 
-#define INPUT5_PIN              GPIO_NUM_8
-#define INPUT6_PIN              GPIO_NUM_18
-#define INPUT7_PIN              GPIO_NUM_17
-#define INPUT8_PIN              GPIO_NUM_16
+#define ENDSTOP_M1_A_PIN        GPIO_NUM_8
+#define ENDSTOP_M1_B_PIN        GPIO_NUM_17
+#define ENDSTOP_M2_A_PIN        GPIO_NUM_18
+#define ENDSTOP_M2_B_PIN        GPIO_NUM_16
 
 
 /* Drivers */

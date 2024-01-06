@@ -6,6 +6,8 @@
 #include "esp_log.h"
 #include "io/io.h"
 #include <u8g2.h>
+#include "esp_app_desc.h"
+#include <string.h>
 
 static u8g2_t u8g2;
 
@@ -79,17 +81,28 @@ void init_i2c_oled()
 
 	u8x8_SetI2CAddress(&u8g2.u8x8, I2C_INT_OLED_ADDR);
 	u8g2_InitDisplay(&u8g2);
+	u8g2_SetPowerSave(&u8g2, false);
 
-	u8g2_SetPowerSave(&u8g2, 0);
-	u8g2_ClearBuffer(&u8g2);
-    u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-    u8g2_DrawStr(&u8g2, 0, 15, "Hello");
-
-    vTaskDelay(pdMS_TO_TICKS(1500));
-
-    u8g2_ClearBuffer(&u8g2);
-    u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-    u8g2_DrawStr(&u8g2, 0, 15, "fistaszki");
-	u8g2_SendBuffer(&u8g2);
+	i2c_oled_power_saver(false);
+	i2c_oled_init_screen();
 }
 
+void i2c_oled_power_saver(bool enable){
+	static bool status = false;
+	if(status != enable){
+		u8g2_SetPowerSave(&u8g2, enable);
+		status = enable;
+	}
+}
+
+void i2c_oled_init_screen(){
+
+	const esp_app_desc_t *desc = esp_app_get_description();
+    u8g2_ClearBuffer(&u8g2);
+    u8g2_SetFont(&u8g2, u8g2_font_t0_16b_tf);
+    u8g2_DrawStr(&u8g2, 35, 18, "Sentinel");
+	u8g2_DrawLine(&u8g2, 8,20,120,20);
+    u8g2_DrawStr(&u8g2, 8, 36, strcat("SW ver: ",desc->version));
+
+	u8g2_SendBuffer(&u8g2);
+}

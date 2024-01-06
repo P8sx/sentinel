@@ -5,7 +5,9 @@
 #include "stdatomic.h"
 #include "stdbool.h"
 
-static const char *STATES_STRING[] = {"OPENED","OPENING","CLOSED","CLOSING","STOPPED_OPENING","STOPPED_CLOSING", "UNKNOWN"};
+#define GATE_CMD(cmd_action, cmd_id) &(gate_command_t){ .action = cmd_action, .id = cmd_id }
+#define STATE_STRING(num)  ((const char *[]){"OPENED","OPENING","CLOSED","CLOSING","STOPPED_OPENING","STOPPED_CLOSING", "UNKNOWN"}[(num%8)])
+
 
 typedef enum motor_id_t {
     M1 = 1,
@@ -17,6 +19,7 @@ typedef enum gate_action_t{
     CLOSE,
     STOP,
     NEXT_STATE,
+    HW_STOP,
 } gate_action_t;
 
 typedef enum gate_state_t {

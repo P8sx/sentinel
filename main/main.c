@@ -16,6 +16,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "drivers/i2c.h"
+#include "io/control.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
@@ -26,8 +27,7 @@ TaskHandle_t tcp_server_task_handle = NULL;
 TaskHandle_t motor_action_task_handle = NULL;
 TaskHandle_t gate_m1_task_handle = NULL;
 TaskHandle_t gate_m2_task_handle = NULL;
-
-
+TaskHandle_t control_input_task_handle = NULL;
 
 void app_main(void)
 {
@@ -44,7 +44,8 @@ void app_main(void)
     io_init_analog();
     
     gate_motor_init();
-    
+    control_init();
+
     wifi_init();
 
     init_i2c();
@@ -56,6 +57,8 @@ void app_main(void)
     xTaskCreatePinnedToCore(gate_action_task, "gate_action_task", 4096, NULL, configMAX_PRIORITIES - 1, &motor_action_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m1_task", 4096, (void *)M1, configMAX_PRIORITIES - 1, &gate_m1_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m2_task", 4096, (void *)M2, configMAX_PRIORITIES - 1, &gate_m2_task_handle, APP_CPU_NUM);
+
+    xTaskCreatePinnedToCore(control_input_task, "control_input_task", 4096, NULL, 5, &control_input_task_handle, PRO_CPU_NUM);
     
     rf433_init();
     ota_init();
@@ -64,6 +67,8 @@ void app_main(void)
     io_buzzer(1,50,100);
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        // ESP_LOGI("MAIN","%i:%i:%i",gpio_get_level(BTN1_PIN),gpio_get_level(BTN2_PIN),gpio_get_level(BTN3_PIN));
+        vTaskDelay(pdMS_TO_TICKS(100));
+        gpio_set_level(BUZZER_PIN, 0);
     }
 }

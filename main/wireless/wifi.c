@@ -117,11 +117,11 @@ void wifi_init(){
 }
 
 void ota_init(){
-    wifi_ap_record_t ap_info;
-    if(ESP_OK != esp_wifi_sta_get_ap_info(&ap_info)){
-        ESP_LOGE(GHOTA_LOG_TAG, "WiFi not connected, ota initialization failed");
-        return;
-    }
+    // wifi_ap_record_t ap_info;
+    // if(ESP_OK != esp_wifi_sta_get_ap_info(&ap_info)){
+    //     ESP_LOGE(GHOTA_LOG_TAG, "WiFi not connected, ota initialization failed");
+    //     return;
+    // }
 
     ghota_config_t ghconfig = {
         .filenamematch = "sentinel-esp32s3.bin",
@@ -162,65 +162,65 @@ static void tcp_receive_handle(const int sock)
             }
             else if(strcmp(rx_buffer, "open m1") == 0){
                 gate_command_t cmd = {.action = OPEN, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "close m1") == 0){
                 gate_command_t cmd = {.action = CLOSE, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "stop m1") == 0){
                 gate_command_t cmd = {.action = STOP, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "next m1") == 0){
                 gate_command_t cmd = {.action = NEXT_STATE, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "open m2") == 0){
                 gate_command_t cmd = {.action = OPEN, .id = M2};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "close m2") == 0){
                 gate_command_t cmd = {.action = CLOSE, .id = M2};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "stop m2") == 0){
                 gate_command_t cmd = {.action = STOP, .id = M2};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "next m2") == 0){
                 gate_command_t cmd = {.action = NEXT_STATE, .id = M2};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "open") == 0){
                 gate_command_t cmd = {.action = OPEN, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
                 cmd.id = M2;
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "close") == 0){
                 gate_command_t cmd = {.action = CLOSE, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
                 cmd.id = M2;
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "stop") == 0){
                 gate_command_t cmd = {.action = STOP, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
                 cmd.id = M2;
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "next") == 0){
                 gate_command_t cmd = {.action = NEXT_STATE, .id = M1};
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
                 cmd.id = M2;
-                xQueueSend(motor_action_queue, &cmd, portMAX_DELAY);
+                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "status") == 0){
                 gate_status_t m1 = gate_get_motor_state(M1);
                 gate_status_t m2 = gate_get_motor_state(M2);
 
-                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATES_STRING[m1.state], (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)gate_get_motor_open_pcnt(M1), (int)gate_get_motor_close_pcnt(M1), STATES_STRING[m2.state], (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)gate_get_motor_open_pcnt(M2), (int)gate_get_motor_close_pcnt(M2));
+                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATE_STRING(m1.state), (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)gate_get_motor_open_pcnt(M1), (int)gate_get_motor_close_pcnt(M1), STATE_STRING(m2.state), (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)gate_get_motor_open_pcnt(M2), (int)gate_get_motor_close_pcnt(M2));
             }
             else if(strcmp(rx_buffer, "partition") == 0){
                 const esp_partition_t *test = esp_ota_get_boot_partition();

@@ -11,7 +11,7 @@
 ESP_EVENT_DECLARE_BASE(GATE_EVENTS);
 
 
-extern QueueHandle_t motor_action_queue;
+extern QueueHandle_t gate_action_queue;
 
 typedef enum motor_event_e
 {

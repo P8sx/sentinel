@@ -36,6 +36,8 @@ There were few mistake in pcb schematic (wrong footprint/spacing already fixed i
 
 ## Used libraries
 [U8G2](https://github.com/olikraus/u8g2) - licensed under the terms of the new-bsd license
+[ghota](https://github.com/Fishwaldo/esp_ghota) - MIT license
+[esp32-button](https://github.com/craftmetrics/esp32-button) - MIT license
 ## License
 Sentinel is licensed under General Public License v3 ( GPLv3 ).
 <br/>
