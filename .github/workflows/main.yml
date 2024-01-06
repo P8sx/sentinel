@@ -56,4 +56,3 @@ jobs:
         artifacts: release/*/*.bin
         generateReleaseNotes: true
         allowUpdates: true
-        token: ${{ secrets.GITHUB_TOKEN }}

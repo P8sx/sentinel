@@ -100,13 +100,14 @@ void i2c_oled_welcome_screen(){
 
 	const esp_app_desc_t *desc = esp_app_get_description();
     u8g2_ClearBuffer(&u8g2);
-    u8g2_SetFont(&u8g2, u8g2_font_t0_16b_tf);
-    u8g2_DrawStr(&u8g2, 35, 18, "Sentinel");
-	u8g2_DrawLine(&u8g2, 8,20,120,20);
+    u8g2_SetFont(&u8g2, u8g2_font_profont22_tr);
+    u8g2_DrawStr(&u8g2, 19, 19, "Sentinel");
+	u8g2_DrawLine(&u8g2, 10,23,117,23);
 
-    u8g2_DrawStr(&u8g2, 8, 36, "SW Ver:");
-    u8g2_DrawStr(&u8g2, 66, 36, desc->version);
-
+    u8g2_SetFont(&u8g2, u8g2_font_haxrcorp4089_tr);
+    u8g2_DrawStr(&u8g2, 10, 34, "SW Ver:");
+    u8g2_DrawStr(&u8g2, 118-u8g2_GetStrWidth(&u8g2, desc->version), 35, desc->version);
+    u8g2_DrawStr(&u8g2, 118-u8g2_GetStrWidth(&u8g2, desc->date), 44, desc->date);
 	u8g2_SendBuffer(&u8g2);
 }
 
