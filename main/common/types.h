@@ -63,6 +63,14 @@ typedef enum input_action_t {
     UNKNOWN_ACTION      = 0xFF,
 } input_action_t;
 
+typedef enum output_action_t{
+    M1_MOVING_BLINK,
+    M2_MOVING_BLINK,
+    M1M2_MOVING_BLINK,
+    M1_MOVING_ON,
+    M2_MOVING_ON,
+    M1M2_MOVING_ON,
+} output_action_t;
 
 typedef struct device_config_t{
     char wifi_ssid[32];

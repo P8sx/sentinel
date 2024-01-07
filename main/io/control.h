@@ -11,6 +11,7 @@
 #include "freertos/timers.h"
 #include "driver/gpio.h"
 
+/* Queue for handling inputs from ISR from Io module*/
 extern QueueHandle_t input_queue; 
 
 void control_input_handling_task(void *pvParameters);

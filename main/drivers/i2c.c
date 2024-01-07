@@ -89,6 +89,7 @@ void init_i2c_oled()
 }
 
 void i2c_oled_power_save(bool enable){
+	if(!i2c_oled_initialized) return;
 	static bool status = false;
 	if(status != enable){
 		u8g2_SetPowerSave(&u8g2, enable);
@@ -97,7 +98,7 @@ void i2c_oled_power_save(bool enable){
 }
 
 void i2c_oled_welcome_screen(){
-
+	if(!i2c_oled_initialized) return;
 	const esp_app_desc_t *desc = esp_app_get_description();
     u8g2_ClearBuffer(&u8g2);
     u8g2_SetFont(&u8g2, u8g2_font_profont22_tr);
@@ -112,6 +113,7 @@ void i2c_oled_welcome_screen(){
 }
 
 void i2c_oled_ota_update(uint8_t progress){
+	if(!i2c_oled_initialized) return;
 	u8g2_ClearBuffer(&u8g2);
 	u8g2_SetBitmapMode(&u8g2, 1);
 	u8g2_SetFontMode(&u8g2, 1);
@@ -123,5 +125,58 @@ void i2c_oled_ota_update(uint8_t progress){
 	char progress_text[5];
     snprintf(progress_text, sizeof(progress_text), "%d%%", progress);
 	u8g2_DrawStr(&u8g2, 76,51, progress_text);
+	u8g2_SendBuffer(&u8g2);
+}
+
+void i2c_oled_ota_start_check(){
+	if(!i2c_oled_initialized) return;
+	static const unsigned char image_ArrowC_1_36x36_bits[] U8X8_PROGMEM = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x80,0x3f,0x00,0x00,0x00,0x70,0xc0,0x00,0x00,0x00,0x0c,0x00,0x01,0x00,0x00,0x02,0x3f,0x01,0x00,0x00,0xe1,0xc0,0x00,0x00,0x80,0x10,0x00,0x00,0x00,0x80,0x08,0x00,0x20,0x00,0x40,0x04,0x00,0x50,0x00,0x40,0x04,0x00,0x88,0x00,0x20,0x02,0x00,0x04,0x01,0x20,0x02,0x00,0x02,0x02,0x10,0x01,0x00,0x01,0x04,0x10,0x01,0x80,0x00,0x08,0x10,0x01,0x80,0x8f,0x0f,0x1f,0x1f,0x00,0x88,0x00,0x01,0x10,0x00,0x88,0x00,0x02,0x08,0x00,0x88,0x00,0x04,0x04,0x00,0x44,0x00,0x08,0x02,0x00,0x44,0x00,0x10,0x01,0x00,0x22,0x00,0xa0,0x00,0x00,0x22,0x00,0x40,0x00,0x00,0x11,0x00,0x00,0x00,0x80,0x10,0x00,0x00,0x30,0x70,0x08,0x00,0x00,0xc8,0x0f,0x04,0x00,0x00,0x08,0x00,0x03,0x00,0x00,0x30,0xe0,0x00,0x00,0x00,0xc0,0x1f,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	u8g2_DrawStr(&u8g2, 35,14, "OTA Update");
+	u8g2_DrawStr(&u8g2, 12,30, "Checking for updates");
+	u8g2_DrawXBMP(&u8g2 ,47, 30, 36, 36, image_ArrowC_1_36x36_bits);
+	u8g2_SendBuffer(&u8g2);
+}
+void i2c_oled_ota_update_available(){
+	if(!i2c_oled_initialized) return;
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	u8g2_DrawStr(&u8g2, 35,14, "OTA Update");
+	u8g2_DrawStr(&u8g2, 30,30, "Update found!");
+	u8g2_SendBuffer(&u8g2);
+}
+void i2c_oled_ota_start_update(){
+	if(!i2c_oled_initialized) return;
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	u8g2_DrawStr(&u8g2, 35,14, "OTA Update");
+	u8g2_DrawStr(&u8g2, 30,30, "Starting update");
+	u8g2_SendBuffer(&u8g2);
+}
+void i2c_oled_ota_finish_update(){
+	if(!i2c_oled_initialized) return;
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	u8g2_DrawStr(&u8g2, 35,14, "OTA Update");
+	u8g2_DrawStr(&u8g2, 28,30, "Update finished");
+	u8g2_SendBuffer(&u8g2);
+}
+void i2c_oled_ota_update_failed(){
+	if(!i2c_oled_initialized) return;
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	u8g2_DrawStr(&u8g2, 35,14, "OTA Update");
+	u8g2_DrawStr(&u8g2, 30,30, "Update failed");
 	u8g2_SendBuffer(&u8g2);
 }

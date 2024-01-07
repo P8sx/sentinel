@@ -43,7 +43,8 @@ void app_main(void)
     io_init_pwm();
     io_init_pcnt();
     io_init_analog();
-    
+    io_init_temp_sensor();
+
     gate_motor_init();
     control_init();
 
@@ -69,7 +70,7 @@ void app_main(void)
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
         // ESP_LOGI("MAIN","%i:%i:%i",gpio_get_level(BTN1_PIN),gpio_get_level(BTN2_PIN),gpio_get_level(BTN3_PIN));
-        vTaskDelay(pdMS_TO_TICKS(100));
-        gpio_set_level(BUZZER_PIN, 0);
+        ESP_LOGI("MAIN", "SoC temp: %f", io_get_soc_temp());
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 }

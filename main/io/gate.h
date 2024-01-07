@@ -7,9 +7,10 @@
 #include <stdio.h>
 #include "esp_event.h"
 
-
+/* Gate status change events */
 ESP_EVENT_DECLARE_BASE(GATE_EVENTS);
 
+/* Queue for controling gate using gate_command_t */
 extern QueueHandle_t gate_action_queue;
 
 typedef enum motor_event_e

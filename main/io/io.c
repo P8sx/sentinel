@@ -9,6 +9,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
+#include "driver/temperature_sensor.h"
 #include "esp_log.h"
 #include "gate.h"
 #include "control.h"
@@ -23,7 +24,9 @@ static adc_cali_handle_t adc1_cali_m1_handle = NULL;
 static adc_cali_handle_t adc1_cali_m2_handle = NULL;
 static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
-
+static temperature_sensor_handle_t temp_handle = NULL;
+ 
+/* All inputs form ISR are redirected to Control module using queue */
 static void IRAM_ATTR isr_handler(void* arg) {
     extern QueueHandle_t input_queue; 
     static TickType_t last_interrupt_time[11] = {0};
@@ -36,7 +39,7 @@ static void IRAM_ATTR isr_handler(void* arg) {
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500),
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500)};
     for (int i = 0; i < 11; ++i) {
-        if (pins[i] == (uint8_t)arg && current_time - last_interrupt_time[i] > debounce_times[i]) {
+        if (pins[i] == (intptr_t)arg && current_time - last_interrupt_time[i] > debounce_times[i]) {
             last_interrupt_time[i] = current_time;
             xQueueSendFromISR(input_queue, &arg, &xHigherPriorityTaskWoken);
             break;
@@ -245,7 +248,14 @@ void io_init_pcnt(){
     ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_m2));
 }
 
-
+void io_init_temp_sensor(){
+    temperature_sensor_config_t temp_sensor = {
+        .range_min = -10,
+        .range_max = 80,
+    };
+    ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor, &temp_handle));
+    ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
+}
 
 void io_motor_dir(motor_id_t id, uint8_t clockwise) {
     pcnt_channel_handle_t pcnt_channel;
@@ -345,3 +355,8 @@ void io_buzzer(uint8_t counts, uint16_t on_period, uint16_t off_period){
     }
 }
 
+float io_get_soc_temp(){
+    float tsens_out;
+    ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_out));
+    return tsens_out;
+}

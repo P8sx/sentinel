@@ -157,10 +157,14 @@ static void gate_next_state(gate_t *motor){
         gate_close(motor);
         ESP_LOGI(GATE_CONTROL_LOG_TAG,"closing M%i",motor->id);
         break;
-     case STOPPED_CLOSING:
+    case STOPPED_CLOSING:
         gate_open(motor);  
         ESP_LOGI(GATE_CONTROL_LOG_TAG,"opening M%i",motor->id);
         break;
+    case UNKNOWN:
+        gate_open(motor);  
+        ESP_LOGI(GATE_CONTROL_LOG_TAG,"opening M%i",motor->id);
+        break;    
     default:
         break;
     }
@@ -174,8 +178,8 @@ static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int
         gate_stop(&m1, true);
         gate_stop(&m2, true);
         xSemaphoreTake(gate_action_task_mutex, portMAX_DELAY);
-    } else if (event_id == GHOTA_EVENT_FINISH_UPDATE) {
-        ESP_LOGI(GATE_LOG_TAG, "Ending sOTA update, enabling motor controll");
+    } else if (event_id == GHOTA_EVENT_FINISH_UPDATE || event_id == GHOTA_EVENT_UPDATE_FAILED || event_id == GHOTA_EVENT_NOUPDATE_AVAILABLE) {
+        ESP_LOGI(GATE_LOG_TAG, "Ending OTA update, enabling motor controll");
         xSemaphoreGive(gate_action_task_mutex);
     }
 }
@@ -244,6 +248,8 @@ void gate_action_task(void *pvParameters) {
                     if (current_motor) {
                         gate_next_state(current_motor);
                     } else {
+                        /* M1 is leading in other to prevent action like M1 is closing and M2 opening assign same state */
+                        m2.state = m1.state;
                         gate_next_state(&m1);
                         gate_next_state(&m2);
                     }

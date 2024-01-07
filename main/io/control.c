@@ -20,14 +20,27 @@ extern QueueHandle_t gate_action_queue;
 QueueHandle_t input_queue = NULL;
 
 
-static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+static void control_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (event_id == GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS) {
         xTimerReset(screen_saver_timer, 0);
         i2c_oled_power_save(false);
         i2c_oled_ota_update(*((int*) event_data));
-    } 
+    } else if(event_id == GHOTA_EVENT_START_CHECK){
+        i2c_oled_ota_start_check();
+    } else if(event_id == GHOTA_EVENT_UPDATE_AVAILABLE){
+        i2c_oled_ota_update_available();
+    } else if(event_id == GHOTA_EVENT_START_UPDATE){
+        i2c_oled_ota_start_update();
+    } else if(event_id == GHOTA_EVENT_FINISH_UPDATE){
+        i2c_oled_ota_finish_update();
+    } else if(event_id == GHOTA_EVENT_UPDATE_FAILED){
+        i2c_oled_ota_update_failed();
+    }
 }
 
+static void control_gate_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+  
+}
 
 
 void screen_saver_timer_callback(TimerHandle_t xTimer) {
@@ -44,7 +57,8 @@ void control_init(){
     xSemaphoreGive(control_oled_task_mutex);
     xTimerStart(screen_saver_timer, 0);
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &gate_ghota_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &control_ghota_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GATE_EVENTS, ESP_EVENT_ANY_ID, &control_gate_event_handler, NULL, NULL));
 
 }
 
@@ -63,9 +77,52 @@ void control_oled_handling_task(void *pvParameters){
     }
 }
 
+void control_gate_action_handle(void *args){
+    gate_command_t cmd = INPUT_ACTION_TO_GATE_COMMAND(*(uint8_t *)args);
+    ESP_LOGI(CONTROL_LOG_TAG,"Input ation called: %i for motor:%i", cmd.action, cmd.id);
+    xQueueSend(gate_action_queue, &cmd, pdMS_TO_TICKS(100));
+}
+
+void control_gate_action_unknown_handle(void *args){
+    ESP_LOGE(CONTROL_LOG_TAG,"Unknown action called");
+}
+
+struct input_lookup_table_t {
+    enum input_action_t action;
+    void (*func)(void *);
+} input_lookup_table[] = {
+    {M1_OPEN,          control_gate_action_handle},
+    {M2_OPEN,          control_gate_action_handle},
+    {M1M2_OPEN,        control_gate_action_handle},
+    {M1_CLOSE,         control_gate_action_handle},
+    {M2_CLOSE,         control_gate_action_handle},
+    {M1M2_CLOSE,       control_gate_action_handle},
+    {M1_STOP,          control_gate_action_handle},
+    {M2_STOP,          control_gate_action_handle},
+    {M1M2_STOP,        control_gate_action_handle},
+    {M1_NEXT_STATE,    control_gate_action_handle},
+    {M2_NEXT_STATE,    control_gate_action_handle},
+    {M1M2_NEXT_STATE,  control_gate_action_handle},
+    {UNKNOWN_ACTION,   control_gate_action_unknown_handle}
+    /* More input actions */
+};
+
+struct output_lookup_table_t {
+    enum output_action_t action;
+    void (*func)(void *);
+} output_lookup_table[] = {
+    {M1_MOVING_BLINK,           control_gate_action_unknown_handle},
+    {M2_MOVING_BLINK,           control_gate_action_unknown_handle},
+    {M1M2_MOVING_BLINK,         control_gate_action_unknown_handle},
+    {M1_MOVING_ON,              control_gate_action_unknown_handle},
+    {M2_MOVING_ON,              control_gate_action_unknown_handle},
+    {M1M2_MOVING_ON,            control_gate_action_unknown_handle},
+    /* More output actions */
+};
+
 
 void control_input_handling_task(void *pvParameters){
-    uint8_t io = 0;
+    static uint8_t io = 0;
     while (true){
         if(xQueueReceive(input_queue, &io, portMAX_DELAY)){
             switch(io){
@@ -78,24 +135,23 @@ void control_input_handling_task(void *pvParameters){
                     vTaskResume(control_oled_task_handle);
                     break;
                 case INPUT1_PIN:
-                    if(device_config.input_actions[0] != UNKNOWN_ACTION){
-                        xQueueSend(gate_action_queue, &INPUT_ACTION_TO_GATE_COMMAND(device_config.input_actions[0]), pdMS_TO_TICKS(100));
-                    }
-                    break;
                 case INPUT2_PIN:
-                    if(device_config.input_actions[1] != UNKNOWN_ACTION){
-                        xQueueSend(gate_action_queue, &INPUT_ACTION_TO_GATE_COMMAND(device_config.input_actions[1]), pdMS_TO_TICKS(100));
-                    }
-                    break;
                 case INPUT3_PIN:
-                    if(device_config.input_actions[2] != UNKNOWN_ACTION){
-                        xQueueSend(gate_action_queue, &INPUT_ACTION_TO_GATE_COMMAND(device_config.input_actions[2]), pdMS_TO_TICKS(100));
-                    }
-                    break;
                 case INPUT4_PIN:
-                    if(device_config.input_actions[3] != UNKNOWN_ACTION){
-                        xQueueSend(gate_action_queue, &INPUT_ACTION_TO_GATE_COMMAND(device_config.input_actions[3]), pdMS_TO_TICKS(100));
+                    static const uint8_t inputs[] = {INPUT1_PIN, INPUT2_PIN, INPUT3_PIN, INPUT4_PIN};
+                    uint8_t input_action = 0;
+                    for(size_t i = 0; i<4; i++){
+                        if(inputs[i] == io){
+                            input_action = device_config.input_actions[i];
+                        }
                     }
+                    for (size_t i = 0; i < sizeof(input_lookup_table) / sizeof(input_lookup_table[0]); ++i){
+                        if(input_lookup_table[i].action == input_action){
+                            input_lookup_table[i].func(&input_action);
+                            break;
+                        }
+                    }
+
                     break;
                 case ENDSTOP_M1_A_PIN:
                 case ENDSTOP_M1_B_PIN:
@@ -103,7 +159,7 @@ void control_input_handling_task(void *pvParameters){
                     break;
                 case ENDSTOP_M2_A_PIN:
                 case ENDSTOP_M2_B_PIN:
-                    xQueueSend(gate_action_queue, &GATE_CMD(HW_STOP, M1), pdMS_TO_TICKS(100));
+                    xQueueSend(gate_action_queue, &GATE_CMD(HW_STOP, M2), pdMS_TO_TICKS(100));
                     break;
             }
         }

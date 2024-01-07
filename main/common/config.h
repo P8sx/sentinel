@@ -45,10 +45,10 @@ void config_init();
 #define BTN2_PIN                GPIO_NUM_14
 #define BTN3_PIN                GPIO_NUM_13
 
-#define INPUT1_PIN              GPIO_NUM_3
-#define INPUT2_PIN              GPIO_NUM_9
-#define INPUT3_PIN              GPIO_NUM_10
-#define INPUT4_PIN              GPIO_NUM_11
+#define INPUT1_PIN              GPIO_NUM_11
+#define INPUT2_PIN              GPIO_NUM_10
+#define INPUT3_PIN              GPIO_NUM_9
+#define INPUT4_PIN              GPIO_NUM_3
 
 #define ENDSTOP_M1_A_PIN        GPIO_NUM_8
 #define ENDSTOP_M1_B_PIN        GPIO_NUM_17
@@ -89,6 +89,7 @@ void config_init();
 #define GATE_CONTROL_LOG_TAG    "MT-CTRL"
 #define GATE_LOG_TAG            "MT"
 #define GHOTA_LOG_TAG           "GHOTA"
+#define CONTROL_LOG_TAG         "CONTROL"
 
 
 #endif
