@@ -5,7 +5,7 @@
 
 void init_i2c();
 void init_i2c_oled();
-bool i2c_oled_init_state();
+bool i2c_oled_initialized();
 void i2c_oled_power_save(bool enable);
 void i2c_oled_welcome_screen();
 

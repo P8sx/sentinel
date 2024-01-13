@@ -35,8 +35,7 @@ typedef struct {
     uint8_t event;
 } button_event_t;
 
-QueueHandle_t button_init(unsigned long long pin_select);
-QueueHandle_t pulled_button_init(unsigned long long pin_select);
+void button_init(unsigned long long pin_select);
 
 #ifdef __cplusplus
 }

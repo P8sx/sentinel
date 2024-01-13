@@ -8,6 +8,7 @@
 #include "io/gate.h"
 #include "wireless/wifi.h"
 #include "wireless/rf.h"
+#include "io/ui_handler.h"
 
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -16,19 +17,18 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "drivers/i2c.h"
-#include "io/control.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_timer.h"
 #include <string.h>
 
-
 TaskHandle_t tcp_server_task_handle = NULL;
 TaskHandle_t motor_action_task_handle = NULL;
 TaskHandle_t gate_m1_task_handle = NULL;
 TaskHandle_t gate_m2_task_handle = NULL;
-TaskHandle_t control_input_task_handle = NULL;
-TaskHandle_t control_oled_task_handle = NULL;
+
+TaskHandle_t ui_handler_oled_task_handle = NULL;
+TaskHandle_t ui_handler_button_task_handle = NULL;
 
 void app_main(void)
 {
@@ -38,29 +38,26 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     config_init();
 
-    io_init_outputs();
-    io_init_inputs();
-    io_init_pwm();
-    io_init_pcnt();
-    io_init_analog();
-    io_init_temp_sensor();
-
-    gate_motor_init();
-    control_init();
-
-    wifi_init();
+    io_init();
+    io_handler_init();
 
     init_i2c();
-	init_i2c_oled();
-    
-    /* All control critical tasks are handled by core 1 everything else like wifi/oled/user action by core 0 */
-    xTaskCreatePinnedToCore(tcp_server_task, "tcp_server", 4096, NULL, 5, &tcp_server_task_handle, PRO_CPU_NUM);
-    
+
+    gate_module_init();
     xTaskCreatePinnedToCore(gate_action_task, "gate_action_task", 4096, NULL, configMAX_PRIORITIES - 1, &motor_action_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m1_task", 4096, (void *)M1, configMAX_PRIORITIES - 1, &gate_m1_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m2_task", 4096, (void *)M2, configMAX_PRIORITIES - 1, &gate_m2_task_handle, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(control_input_handling_task, "input_task", 4096, NULL, configMAX_PRIORITIES - 1, &control_input_task_handle, PRO_CPU_NUM);
-    if(i2c_oled_init_state()) xTaskCreatePinnedToCore(control_oled_handling_task, "oled_task", 4096, NULL, 5, &control_oled_task_handle, APP_CPU_NUM);
+
+    wifi_init();
+    xTaskCreatePinnedToCore(tcp_server_task, "tcp_server", 4096, NULL, 5, &tcp_server_task_handle, PRO_CPU_NUM);
+
+
+	init_i2c_oled();
+    if(i2c_oled_initialized()){
+        ui_handler_init();
+        xTaskCreatePinnedToCore(ui_oled_handling_task, "oled_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_task_handle, APP_CPU_NUM);
+        xTaskCreatePinnedToCore(ui_button_handling_task, "button_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_button_task_handle, APP_CPU_NUM);
+    }
 
     rf433_init();
     ota_init();
@@ -71,6 +68,6 @@ void app_main(void)
     while(1){
         // ESP_LOGI("MAIN","%i:%i:%i",gpio_get_level(BTN1_PIN),gpio_get_level(BTN2_PIN),gpio_get_level(BTN3_PIN));
         ESP_LOGI("MAIN", "SoC temp: %f", io_get_soc_temp());
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }

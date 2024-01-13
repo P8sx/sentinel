@@ -90,16 +90,12 @@ static void button_task(void *pvParameter)
     }
 }
 
-QueueHandle_t button_init(unsigned long long pin_select) {
-    return pulled_button_init(pin_select);
-}
 
-
-QueueHandle_t pulled_button_init(unsigned long long pin_select)
+void button_init(unsigned long long pin_select)
 {
     if (pin_count != -1) {
         ESP_LOGI(TAG, "Already initialized");
-        return NULL;
+        return;
     }
 
     // Scan the pin map to determine number of pins
@@ -128,7 +124,7 @@ QueueHandle_t pulled_button_init(unsigned long long pin_select)
     }
 
     // Spawn a task to monitor the pins
-    xTaskCreate(&button_task, "button_task", CONFIG_ESP32_BUTTON_TASK_STACK_SIZE, NULL, 10, NULL);
+    // xTaskCreate(&button_task, "button_task", CONFIG_ESP32_BUTTON_TASK_STACK_SIZE, NULL, 10, NULL);
 
-    return queue;
+    // return queue;
 }

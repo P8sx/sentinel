@@ -3,16 +3,21 @@
 
 #include "esp_err.h"
 #include "common/types.h"
+#include "esp_event.h"
+
+ESP_EVENT_DECLARE_BASE(IO_EVENTS);
+
+typedef enum io_event_e{
+    IO_INPUT_TRIGGERED_EVENT = 0,
+} io_event_e;
 
 
+void io_init();
 
-void io_init_outputs();
-void io_init_inputs();
-void io_init_analog();
-void io_init_pwm();
-void io_init_pcnt();
-void io_init_temp_sensor();
+void io_handler_init();
+void io_handler_input_handling_task(void *pvParameters);
 
+/* IO Controll */
 void io_motor_dir(motor_id_t id, uint8_t clockwise);
 void io_motor_stop(motor_id_t id);
 void io_motor_pwm(motor_id_t id, uint32_t freq);

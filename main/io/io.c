@@ -12,7 +12,8 @@
 #include "driver/temperature_sensor.h"
 #include "esp_log.h"
 #include "gate.h"
-#include "control.h"
+
+ESP_EVENT_DEFINE_BASE(IO_EVENTS);
 
 static pcnt_unit_handle_t pcnt_unit_m1 = NULL;
 static pcnt_unit_handle_t pcnt_unit_m2 = NULL;
@@ -26,22 +27,38 @@ static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
 static temperature_sensor_handle_t temp_handle = NULL;
  
+void io_init_outputs();
+void io_init_inputs();
+void io_init_analog();
+void io_init_pwm();
+void io_init_pcnt();
+void io_init_temp_sensor();
+
+void io_init(){
+    io_init_outputs();
+    io_init_inputs();
+    io_init_analog();
+    io_init_pwm();
+    io_init_pcnt();
+    io_init_temp_sensor();
+}
 /* All inputs form ISR are redirected to Control module using queue */
-static void IRAM_ATTR isr_handler(void* arg) {
-    extern QueueHandle_t input_queue; 
+static void IRAM_ATTR input_isr_handler(void* arg) {
     static TickType_t last_interrupt_time[11] = {0};
     TickType_t current_time = xTaskGetTickCountFromISR();
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    const uint8_t pins[] = {BTN1_PIN, BTN2_PIN, BTN3_PIN, 
+
+    static const uint8_t pins[] = {BTN1_PIN, BTN2_PIN, BTN3_PIN, 
                             INPUT1_PIN, INPUT2_PIN, INPUT3_PIN, INPUT4_PIN,
                             ENDSTOP_M1_A_PIN, ENDSTOP_M1_B_PIN, ENDSTOP_M2_A_PIN, ENDSTOP_M2_B_PIN};
-    const TickType_t debounce_times[] = {pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), 
+    static const TickType_t debounce_times[] = {pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), 
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500),
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500)};
+
     for (int i = 0; i < 11; ++i) {
         if (pins[i] == (intptr_t)arg && current_time - last_interrupt_time[i] > debounce_times[i]) {
             last_interrupt_time[i] = current_time;
-            xQueueSendFromISR(input_queue, &arg, &xHigherPriorityTaskWoken);
+            esp_event_isr_post(IO_EVENTS, IO_INPUT_TRIGGERED_EVENT, &pins[i], sizeof(uint8_t), NULL);
             break;
         }
     }
@@ -57,9 +74,9 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&btn_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN1_PIN, isr_handler, (void*)BTN1_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN2_PIN, isr_handler, (void*)BTN2_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN3_PIN, isr_handler, (void*)BTN3_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN1_PIN, input_isr_handler, (void*)BTN1_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN2_PIN, input_isr_handler, (void*)BTN2_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BTN3_PIN, input_isr_handler, (void*)BTN3_PIN));
  
     gpio_config_t io_conf = {
         .intr_type = GPIO_INTR_NEGEDGE,
@@ -69,10 +86,10 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT1_PIN, isr_handler, (void*)INPUT1_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT2_PIN, isr_handler, (void*)INPUT2_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT3_PIN, isr_handler, (void*)INPUT3_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT4_PIN, isr_handler, (void*)INPUT4_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT1_PIN, input_isr_handler, (void*)INPUT1_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT2_PIN, input_isr_handler, (void*)INPUT2_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT3_PIN, input_isr_handler, (void*)INPUT3_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(INPUT4_PIN, input_isr_handler, (void*)INPUT4_PIN));
 
     gpio_config_t endstop_io_conf = {
         .intr_type = GPIO_INTR_NEGEDGE,
@@ -82,10 +99,10 @@ void io_init_inputs(){
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&endstop_io_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_A_PIN, isr_handler, (void*)ENDSTOP_M1_A_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_B_PIN, isr_handler, (void*)ENDSTOP_M1_B_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_A_PIN, isr_handler, (void*)ENDSTOP_M2_A_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_B_PIN, isr_handler, (void*)ENDSTOP_M2_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_A_PIN, input_isr_handler, (void*)ENDSTOP_M1_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_B_PIN, input_isr_handler, (void*)ENDSTOP_M1_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_A_PIN, input_isr_handler, (void*)ENDSTOP_M2_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_B_PIN, input_isr_handler, (void*)ENDSTOP_M2_B_PIN));
 
     // gpio_config_t rf_config = {
     //     .intr_type = GPIO_INTR_DISABLE,
@@ -256,6 +273,8 @@ void io_init_temp_sensor(){
     ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor, &temp_handle));
     ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
 }
+
+
 
 void io_motor_dir(motor_id_t id, uint8_t clockwise) {
     pcnt_channel_handle_t pcnt_channel;

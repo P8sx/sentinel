@@ -90,6 +90,6 @@ void config_init();
 #define GATE_LOG_TAG            "MT"
 #define GHOTA_LOG_TAG           "GHOTA"
 #define CONTROL_LOG_TAG         "CONTROL"
-
+#define UI_LOG_TAG              "UI"
 
 #endif

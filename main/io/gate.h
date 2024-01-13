@@ -32,7 +32,7 @@ gate_status_t gate_get_motor_state(motor_id_t id);
 int16_t gate_get_motor_open_pcnt(motor_id_t id);
 int16_t gate_get_motor_close_pcnt(motor_id_t id);
 
-void gate_motor_init();
+void gate_module_init();
 void gate_action_task(void *pvParameters);
 void gate_task(void *pvParameters);
 

@@ -6,7 +6,6 @@
 #include "math.h"
 #include "esp_ghota.h"
 #include "esp_err.h"
-#include "control.h"
 
 ESP_EVENT_DEFINE_BASE(GATE_EVENTS);
 /* extern variables */
@@ -30,7 +29,7 @@ static void gate_stop(gate_t *motor, bool hw_stop);
 static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
 
-void gate_motor_init(){
+void gate_module_init(){
     gate_action_queue = xQueueCreate(5, sizeof(gate_command_t));
     gate_m1_mutex = xSemaphoreCreateBinary();
     gate_m2_mutex = xSemaphoreCreateBinary();
@@ -335,8 +334,6 @@ void gate_task(void *pvParameters){
             xQueueSendToFront(gate_action_queue, &GATE_CMD(STOP, id), pdMS_TO_TICKS(10));
             io_buzzer(5, 50, 50);
         }
-
-        /* Stop motor if endstop is reached */
 
         /* more stop/monitor condition to be defined */
 

@@ -82,8 +82,6 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 
 
 
-
-
 void wifi_init(){
     if(0 == strlen(device_config.wifi_ssid) || 0 == strlen(device_config.wifi_ssid)){
         ESP_LOGE(WIFI_LOG_TAG,"No SSID/Password provided WiFi init failed");
@@ -111,7 +109,7 @@ void wifi_init(){
     memcpy(&(wifi_config.sta.password), &(device_config.wifi_password), sizeof(wifi_config.sta.password));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(WIFI_LOG_TAG, "wifi_init_sta finished.");
 }
