@@ -29,6 +29,7 @@ TaskHandle_t gate_m2_task_handle = NULL;
 
 TaskHandle_t ui_handler_oled_task_handle = NULL;
 TaskHandle_t ui_handler_button_task_handle = NULL;
+TaskHandle_t ui_handler_oled_display_task_handle = NULL;
 
 void app_main(void)
 {
@@ -57,6 +58,7 @@ void app_main(void)
         ui_handler_init();
         xTaskCreatePinnedToCore(ui_oled_handling_task, "oled_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_task_handle, APP_CPU_NUM);
         xTaskCreatePinnedToCore(ui_button_handling_task, "button_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_button_task_handle, APP_CPU_NUM);
+        xTaskCreatePinnedToCore(ui_oled_display_task, "display_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_display_task_handle, APP_CPU_NUM);
     }
 
     rf433_init();
@@ -66,8 +68,6 @@ void app_main(void)
     io_buzzer(1,50,100);
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
-        // ESP_LOGI("MAIN","%i:%i:%i",gpio_get_level(BTN1_PIN),gpio_get_level(BTN2_PIN),gpio_get_level(BTN3_PIN));
-        ESP_LOGI("MAIN", "SoC temp: %f", io_get_soc_temp());
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(portMAX_DELAY);
     }
 }

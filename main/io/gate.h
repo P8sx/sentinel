@@ -28,9 +28,9 @@ typedef struct gate_t {
     atomic_bool close_pcnt_cal;
 } gate_t;
 
-gate_status_t gate_get_motor_state(motor_id_t id);
-int16_t gate_get_motor_open_pcnt(motor_id_t id);
-int16_t gate_get_motor_close_pcnt(motor_id_t id);
+gate_state_t gate_get_state(motor_id_t id);
+int16_t gate_get_open_pcnt(motor_id_t id);
+int16_t gate_get_close_pcnt(motor_id_t id);
 
 void gate_module_init();
 void gate_action_task(void *pvParameters);

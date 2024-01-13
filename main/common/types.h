@@ -7,6 +7,7 @@
 
 #define GATE_CMD(cmd_action, cmd_id) (gate_command_t){ .action = cmd_action, .id = cmd_id }
 #define STATE_STRING(num)  ((const char *[]){"OPENED","OPENING","CLOSED","CLOSING","STOPPED_OPENING","STOPPED_CLOSING", "UNKNOWN"}[(num%8)])
+#define STATE_STRING_NORMALIZED(num)  ((const char *[]){"Opened","Opening","Closed","Closing","Stopped","Stopped", "Unknown"}[(num%8)])
 #define INPUT_ACTION_TO_GATE_COMMAND(inputAction)  ((gate_command_t) { .id = (motor_id_t)(inputAction & 0x0F), .action = (gate_action_t)(inputAction & 0xF0)})
 
 

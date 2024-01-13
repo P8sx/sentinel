@@ -39,8 +39,14 @@
 #include <esp_ghota.h>
 
 static ghota_client_handle_t *ghota_client = NULL;
+static atomic_uint_fast8_t ghota_update_progress = 0;
 static int tcp_socket = 0;
+static bool wifi_status = false;
 
+uint8_t ghota_get_update_progress(){
+    uint8_t progress = atomic_load(&ghota_update_progress);
+    return progress;
+}
 
 static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     ghota_client_handle_t *client = (ghota_client_handle_t *)arg;
@@ -54,9 +60,7 @@ static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int
     } else if (event_id == GHOTA_EVENT_FIRMWARE_UPDATE_PROGRESS) {
         /* display some progress with the firmware update */
         ESP_LOGI(GHOTA_LOG_TAG, "Firmware Update Progress: %d%%", *((int*) event_data));
-    } else if (event_id == GHOTA_EVENT_STORAGE_UPDATE_PROGRESS) {
-        /* display some progress with the spiffs partition update */
-        ESP_LOGI(GHOTA_LOG_TAG, "Storage Update Progress: %d%%", *((int*) event_data));
+        atomic_store(&ghota_update_progress , *((int*) event_data));
     }
     (void)client;
 }
@@ -64,9 +68,14 @@ static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     static int retry_num = 0;
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    if(event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED){
+        wifi_status = true;
+    }
+    
+    if(event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_status = false;
         if (retry_num < WIFI_MAXIMUM_RETRY) {
             esp_wifi_connect();
             retry_num++;
@@ -80,6 +89,9 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     }
 }
 
+bool wifi_connected(){
+    return wifi_status;
+}
 
 
 void wifi_init(){
@@ -207,10 +219,10 @@ static void tcp_receive_handle(const int sock)
                 xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "status") == 0){
-                gate_status_t m1 = gate_get_motor_state(M1);
-                gate_status_t m2 = gate_get_motor_state(M2);
+                gate_state_t m1 = gate_get_state(M1);
+                gate_state_t m2 = gate_get_state(M2);
 
-                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATE_STRING(m1.state), (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)gate_get_motor_open_pcnt(M1), (int)gate_get_motor_close_pcnt(M1), STATE_STRING(m2.state), (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)gate_get_motor_open_pcnt(M2), (int)gate_get_motor_close_pcnt(M2));
+                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATE_STRING(m1), (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)gate_get_open_pcnt(M1), (int)gate_get_close_pcnt(M1), STATE_STRING(m2), (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)gate_get_open_pcnt(M2), (int)gate_get_close_pcnt(M2));
             }
             else if(strcmp(rx_buffer, "partition") == 0){
                 const esp_partition_t *test = esp_ota_get_boot_partition();

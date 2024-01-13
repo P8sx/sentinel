@@ -75,7 +75,10 @@ static void gate_open(gate_t *motor){
     io_motor_fade(id,1023, 1000);
 
     /* Post event of status change */
-    gate_status_t gate_state = gate_get_motor_state(id);
+    gate_status_t gate_state = {
+        .id = id,
+        .state = gate_get_state(id),
+    };
     esp_event_post(GATE_EVENTS, MOTOR_STATUS_CHANGED, &gate_state, sizeof(gate_status_t), pdMS_TO_TICKS(100));
 }
 
@@ -97,7 +100,10 @@ static void gate_close(gate_t *motor){
     io_motor_fade(id,1023, 1000);
 
     /* Post event of status change */
-    gate_status_t gate_state = gate_get_motor_state(id);
+    gate_status_t gate_state = {
+        .id = id,
+        .state = gate_get_state(id),
+    };
     esp_event_post(GATE_EVENTS, MOTOR_STATUS_CHANGED, &gate_state, sizeof(gate_status_t), pdMS_TO_TICKS(100));
 }
 
@@ -130,7 +136,10 @@ static void gate_stop(gate_t *motor, bool hw_stop){
     io_motor_stop(id);
 
     /* Post event of status change */
-    gate_status_t gate_state = gate_get_motor_state(id);
+    gate_status_t gate_state = {
+        .id = id,
+        .state = gate_get_state(id),
+    };
     esp_event_post(GATE_EVENTS, MOTOR_STATUS_CHANGED, &gate_state, sizeof(gate_status_t), pdMS_TO_TICKS(100));
 }
 
@@ -145,11 +154,11 @@ static void gate_next_state(gate_t *motor){
         ESP_LOGI(GATE_CONTROL_LOG_TAG,"opening M%i",motor->id);
         break;
     case OPENING:
-        gate_stop(motor, true);
+        gate_stop(motor, false);
         ESP_LOGI(GATE_CONTROL_LOG_TAG,"stopping M%i",motor->id);
         break;
     case CLOSING:
-        gate_stop(motor, true);
+        gate_stop(motor, false);
         ESP_LOGI(GATE_CONTROL_LOG_TAG,"stopping M%i",motor->id);
         break;
     case STOPPED_OPENING:
@@ -185,19 +194,15 @@ static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int
 
 
 
-gate_status_t gate_get_motor_state(motor_id_t id){
-    gate_status_t status = {
-        .id = id,
-        .state = (M1 == id) ? atomic_load(&(m1.state)) : atomic_load(&(m2.state))
-    };
-    return status;
+gate_state_t gate_get_state(motor_id_t id){
+    return (M1 == id) ? atomic_load(&(m1.state)) : atomic_load(&(m2.state));
 }
 
-int16_t gate_get_motor_open_pcnt(motor_id_t id){
+int16_t gate_get_open_pcnt(motor_id_t id){
     return (M1 == id) ? atomic_load(&(m1.open_pcnt)) : atomic_load(&(m2.open_pcnt));
 }
 
-int16_t gate_get_motor_close_pcnt(motor_id_t id){
+int16_t gate_get_close_pcnt(motor_id_t id){
     return (M1 == id) ? atomic_load(&(m1.close_pcnt)) : atomic_load(&(m2.close_pcnt));
     
 }
@@ -208,7 +213,6 @@ void gate_action_task(void *pvParameters) {
     while (true) {
         if (xQueueReceive(gate_action_queue, &command, portMAX_DELAY) && xSemaphoreTake(gate_action_task_mutex, portMAX_DELAY)) {
             gate_t *current_motor = (M1M2 != command.id) ? ((M1 == command.id) ? &m1 : &m2) : NULL;
-
             switch (command.action) {
                 case OPEN:
                     if (current_motor) {
@@ -343,7 +347,7 @@ void gate_task(void *pvParameters){
         //     int16_t close_pcnt = gate_get_motor_close_pcnt(id);
         //     int32_t total_distance = abs(open_pcnt) + abs(close_pcnt);
 
-        //     gate_state_t current_state = gate_get_motor_state(id);
+        //     gate_state_t current_state = gate_get_gate_state(id);
         //     if(current_state == CLOSING){
         //         int16_t slow_down_point = close_pcnt + total_distance * 0.20;
         //         int16_t current_pcnt = io_motor_get_pcnt(id);
