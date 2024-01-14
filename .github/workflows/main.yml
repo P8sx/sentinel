@@ -1,8 +1,8 @@
 on:
-  push:
-  pull_request:
-    tags:
+  push:    
+    tags:        
       - 'v*'
+    branches: master
       
 permissions:
   contents: write

@@ -96,7 +96,78 @@ void ui_handler_init(){
     button_queue = xQueueCreate(5, sizeof(button_event_t));
 }
 
+void ui_menu_control_submenu(motor_id_t motor_id){
+    static uint8_t pos = 0;
+    button_event_t btn;
+    while(xQueueReceive(button_queue, &btn, pdMS_TO_TICKS(60000))){
+        if(btn.pin == BTN1_PIN && btn.event == BUTTON_PRESSED) pos = pos<4 ? pos+1 : pos;
+        else if(btn.pin == BTN3_PIN && btn.event == BUTTON_PRESSED) pos = pos>0 ? pos-1 : pos;
+        else if(btn.pin == BTN2_PIN && btn.event == BUTTON_PRESSED){
+            switch(pos){
+                case 0:
+                    return;
+                    break;
+                case 1:
+                    xQueueSend(gate_action_queue, &GATE_CMD(NEXT_STATE, motor_id), pdMS_TO_TICKS(1000));
+                    break;
+                case 2:
+                    xQueueSend(gate_action_queue, &GATE_CMD(OPEN, motor_id), pdMS_TO_TICKS(1000));
+                    break;
+                case 3:
+                    xQueueSend(gate_action_queue, &GATE_CMD(CLOSE, motor_id), pdMS_TO_TICKS(1000));
+                    break;
+                case 4:
+                    xQueueSend(gate_action_queue, &GATE_CMD(STOP, motor_id), pdMS_TO_TICKS(1000));
+                    break;
+                default:
+                    break;
+            }
+        }            
+        if(btn.event == BUTTON_RELESED){
+            switch (motor_id){
+            case M1:
+                i2c_oled_menu("Right wing", pos, 4,"Next state", "Open", "Close", "Stop");
+                break;
+            case M2:
+                i2c_oled_menu("Left wing", pos, 4,"Next state", "Open", "Close", "Stop");
+                break;
+            default:
+                i2c_oled_menu("Both wing", pos, 4,"Next state", "Open", "Close", "Stop");
+                break;
+            }
+            
+        }
+    }
+}
 
+void ui_menu_control_menu(){
+    static uint8_t pos = 0;
+    button_event_t btn;
+    while(xQueueReceive(button_queue, &btn, pdMS_TO_TICKS(60000))){
+        if(btn.pin == BTN1_PIN && btn.event == BUTTON_PRESSED) pos = pos<3 ? pos+1 : pos;
+        else if(btn.pin == BTN3_PIN && btn.event == BUTTON_PRESSED) pos = pos>0 ? pos-1 : pos;
+        else if(btn.pin == BTN2_PIN && btn.event == BUTTON_PRESSED){
+            switch(pos){
+                case 0:
+                    return;
+                    break;
+                case 1:
+                    ui_menu_control_submenu(M1M2);
+                    break;
+                case 2:
+                    ui_menu_control_submenu(M1);
+                    break;
+                case 3:
+                    ui_menu_control_submenu(M2);
+                    break;
+                default:
+                    break;
+            }
+            pos = 0;
+        }            
+        if(btn.event == BUTTON_RELESED) i2c_oled_menu("Control", pos, 3,"Both wings", "Right wing", "Left wing");
+    }
+}
 
 void ui_menu_main_menu(){
     static uint8_t pos = 0;
@@ -110,6 +181,10 @@ void ui_menu_main_menu(){
                     atomic_store(&ui_screen_menu, SCREEN_HOME);
                     return;
                     break;
+                case 1:
+                    ui_menu_control_menu();
+                    pos = 0;    
+                    break;
                 case 4:
                     atomic_store(&ui_screen_menu, SCREEN_HOME);
                     ghota_start_check();
@@ -122,7 +197,7 @@ void ui_menu_main_menu(){
                     break;
             }
         }            
-        if(btn.event == BUTTON_RELESED) i2c_oled_menu(pos, 5, "Control", "Configuration", "Status", "OTA", "Beep");
+        if(btn.event == BUTTON_RELESED) i2c_oled_menu("Main menu", pos, 5, "Control", "Configuration", "Status", "OTA", "Beep");
     }
 }
 

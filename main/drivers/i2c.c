@@ -275,7 +275,7 @@ void i2c_oled_menaaau(uint8_t pos, const char* o1 , const char* o2, const char* 
 	u8g2_SendBuffer(&u8g2);
 }
 
-void i2c_oled_menu(int pos, int arg_count, ...){
+void i2c_oled_menu(char * menu_title, int pos, int arg_count, ...){
 	if(!i2c_oled_init) return;
 
 	pos = pos % (arg_count + 1);
@@ -287,6 +287,9 @@ void i2c_oled_menu(int pos, int arg_count, ...){
 	u8g2_ClearBuffer(&u8g2);
 	u8g2_SetBitmapMode(&u8g2, 1);
 	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_5x8_tr);
+	u8g2_DrawStr(&u8g2, 8, 8, menu_title);
+	u8g2_DrawLine(&u8g2, 0, 10, 127, 10);
 	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
 
 	if(pos == arg_count){
@@ -304,30 +307,30 @@ void i2c_oled_menu(int pos, int arg_count, ...){
 	}
 
 	if(menu_pos == 0){
-		u8g2_DrawStr(&u8g2, 36, 16, "Return");
-		u8g2_DrawXBMP(&u8g2, 16, 8, 16, 8, image_return_arrow_8x16_bits);
-		u8g2_DrawFrame(&u8g2, 4, 4, 120, 16);
-		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
-		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 29, 24, "Return");
+		u8g2_DrawXBMP(&u8g2, 8, 16, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawFrame(&u8g2, 2, 12, 124, 16);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list,char *));
 	}
 	else if(menu_pos == 1){
-		u8g2_DrawStr(&u8g2, 36, 16, "Return");
-		u8g2_DrawXBMP(&u8g2, 16, 8, 16, 8, image_return_arrow_8x16_bits);
-		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
-		u8g2_DrawFrame(&u8g2, 4, 4+1*20, 120, 16);
-		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 29, 24,  "Return");
+		u8g2_DrawXBMP(&u8g2, 8, 16, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list,char *));
+		u8g2_DrawFrame(&u8g2, 2, 12+1*16, 124, 16);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list,char *));
 	}
 	else if(menu_pos == 2){
-		u8g2_DrawStr(&u8g2, 16, 16, va_arg(arg_list,char *));
-		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
-		u8g2_DrawFrame(&u8g2, 4, 4+1*20, 120, 16);
-		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 8, 24, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list,char *));
+		u8g2_DrawFrame(&u8g2, 2, 12+1*16, 124, 16);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list,char *));
 	}
 	else if(menu_pos == 3){
-		u8g2_DrawStr(&u8g2, 16, 16, va_arg(arg_list,char *));
-		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
-		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
-		u8g2_DrawFrame(&u8g2, 4, 4+2*20, 120, 16);
+		u8g2_DrawStr(&u8g2, 8, 24, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list,char *));
+		u8g2_DrawFrame(&u8g2, 2, 12+2*16, 124, 16);
 	}
 	u8g2_SendBuffer(&u8g2);
 	va_end(arg_list);
