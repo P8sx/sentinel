@@ -9,5 +9,5 @@ void wifi_init();
 bool wifi_connected();
 void tcp_server_task(void *pvParameters);
 uint8_t ghota_get_update_progress();
-
+void ghota_start_check();
 #endif

@@ -46,12 +46,11 @@ void io_init(){
 static void IRAM_ATTR input_isr_handler(void* arg) {
     static TickType_t last_interrupt_time[11] = {0};
     TickType_t current_time = xTaskGetTickCountFromISR();
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
     static const uint8_t pins[] = {BTN1_PIN, BTN2_PIN, BTN3_PIN, 
                             INPUT1_PIN, INPUT2_PIN, INPUT3_PIN, INPUT4_PIN,
                             ENDSTOP_M1_A_PIN, ENDSTOP_M1_B_PIN, ENDSTOP_M2_A_PIN, ENDSTOP_M2_B_PIN};
-    static const TickType_t debounce_times[] = {pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), pdMS_TO_TICKS(15000), 
+    static const TickType_t debounce_times[] = {pdMS_TO_TICKS(5000), pdMS_TO_TICKS(5000), pdMS_TO_TICKS(5000), 
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500),
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500)};
 

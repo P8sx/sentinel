@@ -47,7 +47,9 @@ uint8_t ghota_get_update_progress(){
     uint8_t progress = atomic_load(&ghota_update_progress);
     return progress;
 }
-
+void ghota_start_check(){
+    ghota_start_update_task(ghota_client);
+}
 static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     ghota_client_handle_t *client = (ghota_client_handle_t *)arg;
     ESP_LOGI(GHOTA_LOG_TAG, "Got Update Callback: %s", ghota_get_event_str(event_id));

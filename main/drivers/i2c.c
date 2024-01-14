@@ -23,12 +23,14 @@ static const unsigned char image_gate_close_right_21x21_bits[] U8X8_PROGMEM = {0
 static const unsigned char image_gate_open_right_9x19_bits[] U8X8_PROGMEM = {0x07,0x00,0x07,0x00,0x07,0x00,0x07,0x00,0xc7,0x01,0xc7,0x01,0xc7,0x01,0xff,0x01,0xff,0x01,0xc7,0x01,0xc7,0x01,0xc7,0x01,0xc7,0x01,0xc7,0x01,0xc7,0x01,0xff,0x01,0xff,0x01,0xc7,0x01,0xc7,0x01};
 static const unsigned char image_gate_unknonw_8_4x16_bits[] U8X8_PROGMEM = {0x0f,0x0f,0x0f,0x0f,0x0f,0x0f,0x0f,0x0f,0x0f,0x06,0x06,0x00,0x06,0x0f,0x0f,0x06};
 
+static const unsigned char image_return_arrow_8x16_bits[] U8X8_PROGMEM = {0x18,0xc0,0x1c,0xc0,0x1e,0xc0,0xff,0xff,0xff,0xff,0x1e,0x00,0x1c,0x00,0x18,0x00};
+
 bool i2c_oled_initialized(){
 	return i2c_oled_init;
 }
 static uint8_t u8g2_hal_i2c_byte(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, void* arg_ptr) {
 	static i2c_cmd_handle_t int_handle_i2c = NULL;
-	xSemaphoreTake(i2c_int_semaphore, pdMS_TO_TICKS(100));
+	xSemaphoreTake(i2c_int_semaphore, pdMS_TO_TICKS(10));
 	switch (msg) {
 		case U8X8_MSG_BYTE_SEND: 
 			uint8_t* data_ptr = (uint8_t*)arg_ptr;
@@ -251,3 +253,83 @@ void i2c_oled_ota_update_failed(){
 	u8g2_DrawStr(&u8g2, 30,30, "Update failed");
 	u8g2_SendBuffer(&u8g2);
 }
+void i2c_oled_menaaau(uint8_t pos, const char* o1 , const char* o2, const char* o3){
+	if(!i2c_oled_init) return;
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	if(pos <= 1){
+		u8g2_DrawStr(&u8g2, 36, 16, "Return");
+		u8g2_DrawXBMP(&u8g2, 16, 8, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawStr(&u8g2, 16, 36, o1);
+		u8g2_DrawStr(&u8g2, 16, 56, o2);
+		u8g2_DrawFrame(&u8g2, 4, 4+pos*20, 120, 16);
+	}
+	else{
+		u8g2_DrawFrame(&u8g2, 4, (4+pos*20)-20, 120, 16);
+		u8g2_DrawStr(&u8g2, 16, 16, o1);
+		u8g2_DrawStr(&u8g2, 16, 36, o2);
+		u8g2_DrawStr(&u8g2, 16, 56, o3);
+	}
+	u8g2_SendBuffer(&u8g2);
+}
+
+void i2c_oled_menu(int pos, int arg_count, ...){
+	if(!i2c_oled_init) return;
+
+	pos = pos % (arg_count + 1);
+    int menu_pos = pos % (arg_count + 1);
+
+    va_list arg_list;
+    va_start(arg_list, arg_count);
+
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+
+	if(pos == arg_count){
+		while((menu_pos-1)>2){
+			(void)va_arg(arg_list,char *);
+			menu_pos--;
+		}
+		menu_pos = 3;
+	}
+	else{
+		while(menu_pos>2){
+			(void)va_arg(arg_list,char *);
+			menu_pos--;
+		}
+	}
+
+	if(menu_pos == 0){
+		u8g2_DrawStr(&u8g2, 36, 16, "Return");
+		u8g2_DrawXBMP(&u8g2, 16, 8, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawFrame(&u8g2, 4, 4, 120, 16);
+		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+	}
+	else if(menu_pos == 1){
+		u8g2_DrawStr(&u8g2, 36, 16, "Return");
+		u8g2_DrawXBMP(&u8g2, 16, 8, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
+		u8g2_DrawFrame(&u8g2, 4, 4+1*20, 120, 16);
+		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+	}
+	else if(menu_pos == 2){
+		u8g2_DrawStr(&u8g2, 16, 16, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
+		u8g2_DrawFrame(&u8g2, 4, 4+1*20, 120, 16);
+		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+	}
+	else if(menu_pos == 3){
+		u8g2_DrawStr(&u8g2, 16, 16, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 16, 36, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 16, 56, va_arg(arg_list,char *));
+		u8g2_DrawFrame(&u8g2, 4, 4+2*20, 120, 16);
+	}
+	u8g2_SendBuffer(&u8g2);
+	va_end(arg_list);
+}
+

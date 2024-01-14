@@ -27,7 +27,6 @@ TaskHandle_t motor_action_task_handle = NULL;
 TaskHandle_t gate_m1_task_handle = NULL;
 TaskHandle_t gate_m2_task_handle = NULL;
 
-TaskHandle_t ui_handler_oled_task_handle = NULL;
 TaskHandle_t ui_handler_button_task_handle = NULL;
 TaskHandle_t ui_handler_oled_display_task_handle = NULL;
 
@@ -56,7 +55,6 @@ void app_main(void)
 	init_i2c_oled();
     if(i2c_oled_initialized()){
         ui_handler_init();
-        xTaskCreatePinnedToCore(ui_oled_handling_task, "oled_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_task_handle, APP_CPU_NUM);
         xTaskCreatePinnedToCore(ui_button_handling_task, "button_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_button_task_handle, APP_CPU_NUM);
         xTaskCreatePinnedToCore(ui_oled_display_task, "display_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_display_task_handle, APP_CPU_NUM);
     }
@@ -68,6 +66,8 @@ void app_main(void)
     io_buzzer(1,50,100);
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
-        vTaskDelay(portMAX_DELAY);
+        
+        ESP_LOGI("MAIN","%i,%i", uxTaskGetStackHighWaterMark(ui_handler_button_task_handle), uxTaskGetStackHighWaterMark(ui_handler_oled_display_task_handle));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

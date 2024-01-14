@@ -23,7 +23,6 @@ static atomic_uint_fast16_t ui_screen_menu = SCREEN_WELCOME;
 
 static SemaphoreHandle_t ui_task_mutex = NULL;
 
-extern TaskHandle_t ui_handler_oled_task_handle;
 extern TaskHandle_t ui_handler_button_task_handle;
 extern TaskHandle_t ui_handler_oled_display_task_handle;
 
@@ -68,7 +67,6 @@ static void ui_event_handler(void* arg, esp_event_base_t event_base, int32_t eve
                 if(!i2c_oled_initialized()) break;
                 xTimerReset(ui_screen_saver_timer_handle, 0);
                 xSemaphoreGive(ui_task_mutex);
-                vTaskResume(ui_handler_oled_task_handle);
                 vTaskResume(ui_handler_button_task_handle);
                 vTaskResume(ui_handler_oled_display_task_handle);
                 break;
@@ -78,8 +76,10 @@ static void ui_event_handler(void* arg, esp_event_base_t event_base, int32_t eve
 }
 
 void screen_saver_timer_callback(TimerHandle_t xTimer) {
-    i2c_oled_power_save(true);
     xSemaphoreTake(ui_task_mutex, 0); // Take semaphore to lock task 
+    vTaskDelay(pdMS_TO_TICKS(500));
+    i2c_oled_power_save(true);
+    atomic_store(&ui_screen_menu, SCREEN_HOME);
 }
 
 
@@ -98,36 +98,48 @@ void ui_handler_init(){
 
 
 
-
-void ui_oled_handling_task(void *pvParameters){
+void ui_menu_main_menu(){
+    static uint8_t pos = 0;
     button_event_t btn;
-    vTaskDelay(pdMS_TO_TICKS(3000));
-    atomic_store(&ui_screen_menu, SCREEN_HOME);
-    while(1){
-        if(uxSemaphoreGetCount(ui_task_mutex) == 0){
-            ESP_LOGI("CONTROL","Suspending itself");
-            vTaskSuspend(NULL);
-        }
-        if(xQueueReceive(button_queue, &btn, pdMS_TO_TICKS(100))){
-            ESP_LOGI("BUTTON", "Button presed:%i, event:%i", btn.pin, btn.event);
-        }
+    while(xQueueReceive(button_queue, &btn, pdMS_TO_TICKS(60000))){
+        if(btn.pin == BTN1_PIN && btn.event == BUTTON_PRESSED) pos = pos<5 ? pos+1 : pos;
+        else if(btn.pin == BTN3_PIN && btn.event == BUTTON_PRESSED) pos = pos>0 ? pos-1 : pos;
+        else if(btn.pin == BTN2_PIN && btn.event == BUTTON_PRESSED){
+            switch(pos){
+                case 0:
+                    atomic_store(&ui_screen_menu, SCREEN_HOME);
+                    return;
+                    break;
+                case 4:
+                    atomic_store(&ui_screen_menu, SCREEN_HOME);
+                    ghota_start_check();
+                    return;
+                    break;
+                case 5:
+                    io_buzzer(1,50,50);
+                    break;
+                default:
+                    break;
+            }
+        }            
+        if(btn.event == BUTTON_RELESED) i2c_oled_menu(pos, 5, "Control", "Configuration", "Status", "OTA", "Beep");
     }
 }
 
 void ui_oled_display_task(void *pvParameters){
-
-    while (true)
-    {
+    button_event_t btn_event;
+    while (true){
         if(uxSemaphoreGetCount(ui_task_mutex) == 0){
             ESP_LOGI("CONTROL","Suspending itself");
             i2c_oled_power_save(true);
             vTaskSuspend(NULL);
             i2c_oled_power_save(false);
         }
-        switch (atomic_load(&ui_screen_menu))
-        {
+        switch (atomic_load(&ui_screen_menu)){
         case SCREEN_WELCOME:
             i2c_oled_welcome_screen();
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            atomic_store(&ui_screen_menu, SCREEN_HOME);
             break;
         case SCREEN_HOME:
             static bool animation_toggle = false;
@@ -137,13 +149,7 @@ void ui_oled_display_task(void *pvParameters){
                 animation_toggle = !animation_toggle;
             }
             uint8_t screen_saver_time = (xTimerGetExpiryTime(ui_screen_saver_timer_handle)-xTaskGetTickCount())/pdMS_TO_TICKS(1000);
-            i2c_oled_home_screen(
-                screen_saver_time, 
-                io_get_soc_temp(), 
-                wifi_connected(), 
-                gate_get_state(M1), 
-                gate_get_state(M2), 
-                animation_toggle);
+            i2c_oled_home_screen(screen_saver_time, io_get_soc_temp(), wifi_connected(), gate_get_state(M1), gate_get_state(M2), animation_toggle);
             break;
         case SCREEN_GHOTA_START_CHECK:
             i2c_oled_ota_start_check();
@@ -163,10 +169,14 @@ void ui_oled_display_task(void *pvParameters){
         case SCREEN_GHOTA_FINISH_UPDATE:
             i2c_oled_ota_finish_update();
             break;
+        case SCREEN_MENU:
+            ui_menu_main_menu();
         default:
             break;
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        if(xQueueReceive(button_queue, &btn_event, pdMS_TO_TICKS(100)) && btn_event.pin == BTN1_PIN){
+            atomic_store(&ui_screen_menu, SCREEN_MENU);
+        }
     }
     
 }
@@ -234,6 +244,8 @@ void ui_button_handling_task(void *pvParameters){
         if(uxSemaphoreGetCount(ui_task_mutex) == 0){
             ESP_LOGI("BUTTON","Suspending itself");
             vTaskSuspend(NULL);
+            ESP_LOGI("BUTTON","Resuming itself");
+
         }
         vTaskDelay(pdMS_TO_TICKS(10));
     }

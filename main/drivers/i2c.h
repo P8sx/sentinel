@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "common/config.h"
 #include "common/types.h"
+#include <stdarg.h>
 
 void init_i2c();
 void init_i2c_oled();
@@ -18,4 +19,6 @@ void i2c_oled_ota_update_available();
 void i2c_oled_ota_start_update();
 void i2c_oled_ota_finish_update();
 void i2c_oled_ota_update_failed();
+void i2c_oled_menu(int pos, int arg_count, ...);
+
 #endif
