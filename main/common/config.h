@@ -6,7 +6,7 @@
 
 extern device_config_t device_config;
 void config_init();
-
+void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
 
 /* Analog PINS */
 #define M1_SENSE_CHANNEL        ADC_CHANNEL_1              // GPIO2
@@ -91,5 +91,6 @@ void config_init();
 #define GHOTA_LOG_TAG           "GHOTA"
 #define CONTROL_LOG_TAG         "CONTROL"
 #define UI_LOG_TAG              "UI"
+#define CFG_LOG_TAG             "CFG"
 
 #endif

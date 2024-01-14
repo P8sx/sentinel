@@ -292,7 +292,7 @@ void gate_task(void *pvParameters){
     /* OCP Protection variables*/
     int16_t ocp_count = 0;
     int16_t cfg_ocp_count = 0;
-    int16_t cfg_ocp_treshold = 0;
+    int16_t cfg_ocp_threshold = 0;
     
     /* No current stop debounce */
     uint8_t no_current_stop = 0;
@@ -307,7 +307,7 @@ void gate_task(void *pvParameters){
             ESP_LOGI(GATE_LOG_TAG,"M%i Motor task is being resumed", id);
 
             cfg_ocp_count = (M1 == id) ? device_config.m1_ocp_count : device_config.m2_ocp_count;
-            cfg_ocp_treshold = (M1 == id) ? device_config.m1_ocp_treshold : device_config.m2_ocp_treshold;
+            cfg_ocp_threshold = (M1 == id) ? device_config.m1_ocp_threshold : device_config.m2_ocp_threshold;
             ocp_count = 0;
             vTaskDelay(pdMS_TO_TICKS(1000)); // Delay for motor to ramp up
         }
@@ -326,10 +326,10 @@ void gate_task(void *pvParameters){
 
 
         /* Stop motor if overcurrent event occured */
-        if(0 != cfg_ocp_count && 0 != cfg_ocp_treshold && current > cfg_ocp_treshold){
-            if(current > cfg_ocp_treshold * 1.8) ocp_count += 10;
-            else if(current > cfg_ocp_treshold * 1.4) ocp_count += 8;
-            else if(current > cfg_ocp_treshold * 1.2) ocp_count += 6;
+        if(0 != cfg_ocp_count && 0 != cfg_ocp_threshold && current > cfg_ocp_threshold){
+            if(current > cfg_ocp_threshold * 1.8) ocp_count += 10;
+            else if(current > cfg_ocp_threshold * 1.4) ocp_count += 8;
+            else if(current > cfg_ocp_threshold * 1.2) ocp_count += 6;
             else ocp_count++;            
             ESP_LOGW(GATE_LOG_TAG,"M%i OCP Count increased: %i, current: %imA", id, ocp_count, current);       
         }

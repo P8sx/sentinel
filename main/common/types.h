@@ -83,8 +83,8 @@ typedef struct device_config_t{
     bool m1_dir;
     bool m2_dir;
 
-    uint16_t m1_ocp_treshold;
-    uint16_t m2_ocp_treshold;
+    uint16_t m1_ocp_threshold;
+    uint16_t m2_ocp_threshold;
     uint16_t m1_ocp_count;
     uint16_t m2_ocp_count;
 

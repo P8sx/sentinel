@@ -2,7 +2,7 @@
 <p align="center">
 <img src="https://img.shields.io/github/last-commit/P8sx/sentinel.svg?style=for-the-badge" />
 &nbsp;
-<img src="https://img.shields.io/github/license/P8sx/sentinel.svgsvg?style=for-the-badge" />
+<img src="https://img.shields.io/github/license/P8sx/sentinel.svg?style=for-the-badge" />
 </p>
 
 <p align="center">

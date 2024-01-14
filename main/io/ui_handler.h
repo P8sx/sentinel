@@ -21,6 +21,9 @@ void ui_oled_display_task(void *pvParameters);
 #define BUTTON_HELD         3
 #define BUTTON_LONG_PRESS_DURATION_MS   2000
 #define BUTTON_LONG_PRESS_REPEAT_MS     50
+#define IS_BTN_PRESSED(btn, pin_num) (btn.pin == pin_num && btn.event == BUTTON_PRESSED)
+#define IS_BTN_RELESED(btn, pin_num) (btn.pin == pin_num && btn.event == BUTTON_RELESED)
+#define IS_BTN_HELD(btn, pin_num) (btn.pin == pin_num && btn.event == BUTTON_HELD)
 
 typedef struct debounce_t{
     uint8_t pin;

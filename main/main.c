@@ -55,8 +55,8 @@ void app_main(void)
 	init_i2c_oled();
     if(i2c_oled_initialized()){
         ui_handler_init();
-        xTaskCreatePinnedToCore(ui_button_handling_task, "button_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_button_task_handle, APP_CPU_NUM);
-        xTaskCreatePinnedToCore(ui_oled_display_task, "display_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_display_task_handle, APP_CPU_NUM);
+        xTaskCreatePinnedToCore(ui_button_handling_task, "button_task", 2048, NULL, configMAX_PRIORITIES - 6, &ui_handler_button_task_handle, APP_CPU_NUM);
+        xTaskCreatePinnedToCore(ui_oled_display_task, "display_task", 8192, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_display_task_handle, APP_CPU_NUM);
     }
 
     rf433_init();
@@ -67,7 +67,7 @@ void app_main(void)
     ESP_LOGI("MAIN","INIT DONE");
     while(1){
         
-        // ESP_LOGI("MAIN","%i,%i", uxTaskGetStackHighWaterMark(ui_handler_button_task_handle), uxTaskGetStackHighWaterMark(ui_handler_oled_display_task_handle));
+        ESP_LOGI("MAIN","%i,%i", uxTaskGetStackHighWaterMark(ui_handler_button_task_handle), uxTaskGetStackHighWaterMark(ui_handler_oled_display_task_handle));
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

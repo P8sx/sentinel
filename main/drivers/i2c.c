@@ -292,7 +292,7 @@ void i2c_oled_menu(const char * menu_title, int pos, int arg_count, ...){
 	u8g2_DrawLine(&u8g2, 0, 10, 127, 10);
 	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
 
-	if(pos == arg_count){
+	if(pos == arg_count && pos > 2){
 		while((menu_pos-1)>2){
 			(void)va_arg(arg_list,char *);
 			menu_pos--;
@@ -320,6 +320,13 @@ void i2c_oled_menu(const char * menu_title, int pos, int arg_count, ...){
 		u8g2_DrawFrame(&u8g2, 2, 12+1*16, 124, 16);
 		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list,char *));
 	}
+	else if(menu_pos == 2 && arg_count == 2){
+		u8g2_DrawStr(&u8g2, 29, 24,  "Return");
+		u8g2_DrawXBMP(&u8g2, 8, 16, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list,char *));
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list,char *));	
+		u8g2_DrawFrame(&u8g2, 2, 12+2*16, 124, 16);
+	}
 	else if(menu_pos == 2){
 		u8g2_DrawStr(&u8g2, 8, 24, va_arg(arg_list,char *));
 		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list,char *));
@@ -336,3 +343,12 @@ void i2c_oled_menu(const char * menu_title, int pos, int arg_count, ...){
 	va_end(arg_list);
 }
 
+void i2c_oled_menu_status(){
+	if(!i2c_oled_init) return;
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_5x8_tr);
+	u8g2_DrawStr(&u8g2, 8, 8, "Nothing here :D");
+	u8g2_SendBuffer(&u8g2);
+}
