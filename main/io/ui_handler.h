@@ -47,6 +47,11 @@ typedef enum oled_state_e{
     SCREEN_GHOTA_FIRMWARE_UPDATE_PROGRESS,
 } oled_state_e;
 
+typedef enum menu_return_result_e{
+    USER_RETURN,
+    TIMER_RETURN = 0xFF,
+} menu_return_result_e;
+
 typedef enum ui_event_e
 {
     UI_HOME_EVENT = 0,

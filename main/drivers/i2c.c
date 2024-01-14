@@ -275,7 +275,7 @@ void i2c_oled_menaaau(uint8_t pos, const char* o1 , const char* o2, const char* 
 	u8g2_SendBuffer(&u8g2);
 }
 
-void i2c_oled_menu(char * menu_title, int pos, int arg_count, ...){
+void i2c_oled_menu(const char * menu_title, int pos, int arg_count, ...){
 	if(!i2c_oled_init) return;
 
 	pos = pos % (arg_count + 1);
