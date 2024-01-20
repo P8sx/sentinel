@@ -26,8 +26,17 @@ static void gate_open(gate_t *motor);
 static void gate_close(gate_t *motor);
 static void gate_stop(gate_t *motor, bool hw_stop);
 
-static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-
+static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    if (event_id == GHOTA_EVENT_START_UPDATE) {
+        ESP_LOGI(GATE_LOG_TAG, "Starting OTA update disabling motor controll");
+        gate_stop(&m1, true);
+        gate_stop(&m2, true);
+        xSemaphoreTake(gate_action_task_mutex, portMAX_DELAY);
+    } else if (event_id == GHOTA_EVENT_FINISH_UPDATE || event_id == GHOTA_EVENT_UPDATE_FAILED || event_id == GHOTA_EVENT_NOUPDATE_AVAILABLE) {
+        ESP_LOGI(GATE_LOG_TAG, "Ending OTA update, enabling motor controll");
+        xSemaphoreGive(gate_action_task_mutex);
+    }
+}
 
 void gate_module_init(){
     gate_action_queue = xQueueCreate(5, sizeof(gate_command_t));
@@ -180,22 +189,26 @@ static void gate_next_state(gate_t *motor){
 
 
 
-static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-    if (event_id == GHOTA_EVENT_START_UPDATE) {
-        ESP_LOGI(GATE_LOG_TAG, "Starting OTA update disabling motor controll");
-        gate_stop(&m1, true);
-        gate_stop(&m2, true);
-        xSemaphoreTake(gate_action_task_mutex, portMAX_DELAY);
-    } else if (event_id == GHOTA_EVENT_FINISH_UPDATE || event_id == GHOTA_EVENT_UPDATE_FAILED || event_id == GHOTA_EVENT_NOUPDATE_AVAILABLE) {
-        ESP_LOGI(GATE_LOG_TAG, "Ending OTA update, enabling motor controll");
-        xSemaphoreGive(gate_action_task_mutex);
-    }
-}
-
-
 
 gate_state_t gate_get_state(motor_id_t id){
-    return (M1 == id) ? atomic_load(&(m1.state)) : atomic_load(&(m2.state));
+    gate_state_t m1_state = atomic_load(&(m1.state));
+    gate_state_t m2_state = atomic_load(&(m2.state));
+    if(M1M2 != id)
+        return (M1 == id) ? m1_state : m2_state;
+    else{
+        if(m1_state == m2_state)
+            return m1_state;
+        else if(OPENING == m1_state || OPENING == m2_state)
+            return OPENING;
+        else if(CLOSING == m1_state || CLOSING == m2_state)
+            return CLOSING;
+        else if(OPENED == m1_state || OPENED == m2_state)
+            return OPENED;
+        else if(CLOSED == m1_state && CLOSED == m2_state)
+            return CLOSED;
+        else
+            return OPENED;
+    }
 }
 
 int16_t gate_get_open_pcnt(motor_id_t id){

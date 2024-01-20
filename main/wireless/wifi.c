@@ -41,9 +41,11 @@
 
 
 static ghota_client_handle_t *ghota_client = NULL;
+static esp_mqtt_client_handle_t mqtt_client = NULL;
 static atomic_uint_fast8_t ghota_update_progress = 0;
 static int tcp_socket = 0;
 static bool wifi_status = false;
+
 
 uint8_t ghota_get_update_progress(){
     uint8_t progress = atomic_load(&ghota_update_progress);
@@ -54,7 +56,7 @@ void ghota_start_check(){
     ghota_start_update_task(ghota_client);
 }
 
-static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+static void wifi_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     ghota_client_handle_t *client = (ghota_client_handle_t *)arg;
     ESP_LOGI(GHOTA_LOG_TAG, "Got Update Callback: %s", ghota_get_event_str(event_id));
     if (event_id == GHOTA_EVENT_START_STORAGE_UPDATE) {
@@ -87,7 +89,7 @@ void ghota_config_init(){
     if (NULL == ghota_client) {
         ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
     }
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &gate_ghota_event_handler, ghota_client, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &wifi_ghota_event_handler, ghota_client, NULL));
     ESP_LOGI(GHOTA_LOG_TAG, "Init successful");
 }
 
@@ -131,7 +133,7 @@ void wifi_config_init(){
 
     esp_netif_t *esp_netif = NULL;
     esp_netif = esp_netif_next(esp_netif);
-    esp_netif_set_hostname(esp_netif, "sentinel");
+    esp_netif_set_hostname(esp_netif, device_config.device_name);
     
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -154,26 +156,172 @@ void wifi_config_init(){
 }
 
 
+
+static char mqtt_availability_topic[128];
+static char mqtt_left_wing_state_topic[128];
+static char mqtt_left_wing_cmd_topic[128];
+static char mqtt_right_wing_state_topic[128];
+static char mqtt_right_wing_cmd_topic[128];
+static char mqtt_both_wing_state_topic[128];
+static char mqtt_both_wing_cmd_topic[128];
+static char mqtt_update_topic[128];
+
+
+static void wifi_gate_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+     if(MOTOR_STATUS_CHANGED == event_id){
+        gate_status_t gate_status = *(gate_status_t *)event_data;
+        if(M1 == gate_status.id){
+            switch (gate_status.state){
+                case OPENED:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_right_wing_state_topic, "open", 0, 1, 1);
+                break;
+                case OPENING:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_right_wing_state_topic, "opening", 0, 1, 1);
+                break;
+                case CLOSED:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_right_wing_state_topic, "closed", 0, 1, 1);
+                break;
+                case CLOSING:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_right_wing_state_topic, "closing", 0, 1, 1);
+                break;
+                case STOPPED_CLOSING:
+                case STOPPED_OPENING:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_right_wing_state_topic, "stopped", 0, 1, 1);             
+                break;
+                default:
+                break;
+            }
+        } else if(M2 == gate_status.id){
+            switch (gate_status.state){
+                case OPENED:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_left_wing_state_topic, "open", 0, 1, 1);
+                break;
+                case OPENING:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_left_wing_state_topic, "opening", 0, 1, 1);
+                break;
+                case CLOSED:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_left_wing_state_topic, "closed", 0, 1, 1);
+                break;
+                case CLOSING:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_left_wing_state_topic, "closing", 0, 1, 1);
+                break;
+                case STOPPED_CLOSING:
+                case STOPPED_OPENING:
+                    esp_mqtt_client_publish(mqtt_client, mqtt_left_wing_state_topic, "stopped", 0, 1, 1);             
+                break;
+                default:
+                break;
+            }
+        }
+        gate_state_t m1m2_state = gate_get_state(M1M2);
+        switch (m1m2_state){
+            case OPENED:
+                esp_mqtt_client_publish(mqtt_client, mqtt_both_wing_state_topic, "open", 0, 1, 1);
+            break;
+            case OPENING:
+                esp_mqtt_client_publish(mqtt_client, mqtt_both_wing_state_topic, "opening", 0, 1, 1);
+            break;
+            case CLOSED:
+                esp_mqtt_client_publish(mqtt_client, mqtt_both_wing_state_topic, "closed", 0, 1, 1);
+            break;
+            case CLOSING:
+                esp_mqtt_client_publish(mqtt_client, mqtt_both_wing_state_topic, "closing", 0, 1, 1);
+            break;
+            case STOPPED_CLOSING:
+            case STOPPED_OPENING:
+                esp_mqtt_client_publish(mqtt_client, mqtt_both_wing_state_topic, "stopped", 0, 1, 1);             
+            break;
+            default:
+            break;
+        }
+    }
+}
+void mqtt_cover_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* wing_name, const char* availability_topic, const char* state_topic, const char* command_topic) {
+  snprintf(config_buffer,
+           size,
+           "{"
+           "\"name\": \"%s\","
+           "\"unique_id\": \"%s-%s\","
+           "\"availability_topic\": \"%s\","
+           "\"command_topic\": \"%s\","
+           "\"state_topic\": \"%s\","
+           "\"payload_available\": \"1\","
+           "\"payload_not_available\": \"0\","
+           "\"availability_mode\": \"latest\","
+           "\"device\": {"
+           "\"identifiers\": [\"%s\"],"
+           "\"manufacturer\": \"P8sx\","
+           "\"model\": \"Sentinel\","
+           "\"name\": \"Sentinel\","
+           "\"sw_version\": \"%s\","
+           "\"hw_version\": \"%s\""
+           "},"
+           "\"device_class\": \"garage\""
+           "}",
+           name, device_name, wing_name, availability_topic, command_topic, state_topic, device_name, device_config.sw_version, device_config.hw_version);
+}
+void mqtt_button_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* unique_id, const char* availability_topic, const char* command_topic) {
+  snprintf(config_buffer,
+           size,
+           "{"
+           "\"name\": \"%s\","
+           "\"unique_id\": \"%s-%s\","
+           "\"availability_topic\": \"%s\","
+           "\"availability_mode\": \"latest\","
+           "\"command_topic\": \"%s\","
+           "\"payload_available\": \"1\","
+           "\"payload_not_available\": \"0\","
+           "\"device\": {"
+           "\"identifiers\": [\"%s\"],"
+           "\"manufacturer\": \"P8sx\","
+           "\"model\": \"Sentinel\","
+           "\"name\": \"Sentinel\","
+           "\"sw_version\": \"%s\","
+           "\"hw_version\": \"%s\""
+           "},"
+           "\"device_class\": \"update\","
+           "\"entity_category\": \"diagnostic\","
+           "\"payload_press\": \"\""
+           "}",
+           name, device_name, unique_id, availability_topic, command_topic, device_name, device_config.sw_version, device_config.hw_version);
+}
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    ESP_LOGD(MQTT_LOG_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
+
+    static char config[512];
+    static char config_topic[128];
+
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_CONNECTED");
-        // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        // ESP_LOGI(MQTT_LOG_TAG, "sent publish successful, msg_id=%d", msg_id);
 
-        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-        // ESP_LOGI(MQTT_LOG_TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        /* Publish cover configuration */
+        snprintf(config_topic, sizeof(config_topic),"homeassistant/cover/%s/left-wing/config", device_config.device_name);
+        mqtt_cover_config(config, 512, "Left wing", device_config.device_name, "left-wing", mqtt_availability_topic, mqtt_left_wing_state_topic, mqtt_left_wing_cmd_topic);
+        esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
+        esp_mqtt_client_subscribe(client, mqtt_left_wing_cmd_topic, 1);
 
-        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        // ESP_LOGI(MQTT_LOG_TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        snprintf(config_topic, sizeof(config_topic),"homeassistant/cover/%s/right-wing/config", device_config.device_name);
+        mqtt_cover_config(config, 512, "Right wing", device_config.device_name, "right-wing", mqtt_availability_topic, mqtt_right_wing_state_topic, mqtt_right_wing_cmd_topic);
+        esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
+        esp_mqtt_client_subscribe(client, mqtt_right_wing_cmd_topic, 1);
 
-        // msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        // ESP_LOGI(MQTT_LOG_TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+        snprintf(config_topic, sizeof(config_topic),"homeassistant/cover/%s/both-wing/config", device_config.device_name);
+        mqtt_cover_config(config, 512, "Both wing", device_config.device_name, "both-wing", mqtt_availability_topic, mqtt_both_wing_state_topic, mqtt_both_wing_cmd_topic);
+        esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
+        esp_mqtt_client_subscribe(client, mqtt_both_wing_cmd_topic, 1);
+
+        snprintf(config_topic, sizeof(config_topic), "homeassistant/button/%s/update/config", device_config.device_name);
+        mqtt_button_config(config, 512, "OTA Update", device_config.device_name, "update", mqtt_availability_topic, mqtt_update_topic);
+        esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
+        esp_mqtt_client_subscribe(client, mqtt_update_topic, 1);
+
+        /* Publish availability status */
+        esp_mqtt_client_publish(client, mqtt_availability_topic, "1", 0, 1, 0);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_DISCONNECTED");
@@ -192,8 +340,24 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
+        if (strncmp(event->topic, mqtt_right_wing_cmd_topic, event->topic_len) == 0) {
+            xQueueSend(gate_action_queue, &GATE_CMD(
+                (strncmp("OPEN", event->data, event->data_len) == 0) ? OPEN :
+                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, M1), pdMS_TO_TICKS(500));
+        } else if (strncmp(event->topic, mqtt_left_wing_cmd_topic, event->topic_len) == 0) {
+            xQueueSend(gate_action_queue, &GATE_CMD(
+                (strncmp("OPEN", event->data, event->data_len) == 0) ? OPEN :
+                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, M2), pdMS_TO_TICKS(500));
+        } else if (strncmp(event->topic, mqtt_both_wing_cmd_topic, event->topic_len) == 0) {
+            xQueueSend(gate_action_queue, &GATE_CMD(
+                (strncmp("OPEN", event->data, event->data_len) == 0) ? OPEN :
+                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, M1M2), pdMS_TO_TICKS(500));
+        }
+
+        if(strncmp(event->topic, mqtt_update_topic, event->topic_len) == 0){
+            ESP_LOGI(MQTT_LOG_TAG, "Initializing OTA");
+            ghota_start_check();
+        }
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_ERROR");
@@ -209,16 +373,38 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 void mqtt_config_init(){
-    if(0 == strlen(device_config.mqtt_server)){
+    if(0 == strlen(device_config.mqtt_uri)){
         ESP_LOGE(MQTT_LOG_TAG,"No MQTT URI provided");
         return;
     }
-    esp_mqtt_client_config_t mqtt_cfg = {};
-    memcpy(&(mqtt_cfg.broker.address), &(device_config.mqtt_server), sizeof(mqtt_cfg.broker.address));
+    
+    snprintf(mqtt_availability_topic, sizeof(mqtt_availability_topic), "sentinel/%s/state/connected", device_config.device_name);
+    snprintf(mqtt_left_wing_state_topic, sizeof(mqtt_left_wing_state_topic), "sentinel/%s/%s/state", device_config.device_name, "left-wing");
+    snprintf(mqtt_left_wing_cmd_topic, sizeof(mqtt_left_wing_cmd_topic), "sentinel/%s/%s/cmd", device_config.device_name, "left-wing");
+    snprintf(mqtt_right_wing_state_topic, sizeof(mqtt_right_wing_state_topic), "sentinel/%s/%s/state", device_config.device_name, "right-wing");
+    snprintf(mqtt_right_wing_cmd_topic, sizeof(mqtt_right_wing_cmd_topic), "sentinel/%s/%s/cmd", device_config.device_name, "right-wing");
+    snprintf(mqtt_both_wing_state_topic, sizeof(mqtt_both_wing_state_topic), "sentinel/%s/%s/state", device_config.device_name, "both-wing");
+    snprintf(mqtt_both_wing_cmd_topic, sizeof(mqtt_both_wing_cmd_topic), "sentinel/%s/%s/cmd", device_config.device_name, "both-wing");
+    snprintf(mqtt_update_topic, sizeof(mqtt_update_topic), "sentinel/%s/%s/cmd", device_config.device_name, "update");
 
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(client);
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .broker.address.uri = device_config.mqtt_uri,
+        .broker.address.port = device_config.mqtt_port,
+        .credentials.client_id = device_config.device_name,
+        .session.last_will.msg = "0",
+        .session.last_will.qos = 1,
+        .session.last_will.topic = mqtt_availability_topic,
+        .session.last_will.retain = true,
+        .session.keepalive = 10,
+        .buffer.out_size = 1024,
+        .buffer.size = 1024,
+    };
+    ESP_LOGI(MQTT_LOG_TAG, "%s",mqtt_cfg.broker.address.uri);
+
+    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    ESP_ERROR_CHECK(esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_mqtt_client_start(mqtt_client));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GATE_EVENTS, ESP_EVENT_ANY_ID, &wifi_gate_event_handler, NULL, NULL));
 }
 
 

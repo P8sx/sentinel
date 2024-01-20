@@ -5,11 +5,10 @@
 #include "common/types.h"
 
 extern device_config_t device_config;
-void save_config();
-void config_init();
-void migrate_config();
+void config_load();
 void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
 
+#define HW_VERSION              "v1.0"
 /* Analog PINS */
 #define M1_SENSE_CHANNEL        ADC_CHANNEL_1              // GPIO2
 #define M2_SENSE_CHANNEL        ADC_CHANNEL_0              // GPIO1
@@ -95,5 +94,29 @@ void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_th
 #define UI_LOG_TAG              "UI"
 #define CFG_LOG_TAG             "CFG"
 #define MQTT_LOG_TAG            "MQTT"
+
+
+/* Config keys */
+#define CFG_NAMESPACE           "cfg-nmspace"
+
+#define CFG_WIFI_SSID           "WIFI_SSID"
+#define CFG_WIFI_PASSWORD       "WIFI_PASSWORD"
+
+#define CFG_M1_DIR              "M1_DIR"
+#define CFG_M1_OCP_COUNT        "M1_OCP_COUNT"
+#define CFG_M1_OCP_THRESHOLD    "M1_OCP_THR"
+
+#define CFG_M2_DIR              "M2_DIR"
+#define CFG_M2_OCP_THRESHOLD    "M2_OCP_THR"
+#define CFG_M2_OCP_COUNT        "M2_OCP_COUNT"
+
+#define CFG_INPUT_ACTIONS       "INPUT_ACTIONS"
+#define CFG_OUTPUT_ACTIONS      "OUTPUT_ACTIONS"
+
+#define CFG_MQTT_URI            "MQTT_URI"
+#define CFG_MQTT_PASSWORD       "MQTT_PASSWORD"
+#define CFG_MQTT_USERNAME       "MQTT_USERNAME"
+#define CFG_MQTT_PORT           "MQTT_PORT"
+
 
 #endif

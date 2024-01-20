@@ -76,9 +76,14 @@ typedef enum output_action_t{
 typedef struct device_config_t{
     char wifi_ssid[32];
     char wifi_password[64];
-    char mqtt_server[64];
+    
+    char mqtt_uri[64];
     char mqtt_password[64];
     char mqtt_username[64];
+
+    char device_name[64];
+    
+    uint32_t mqtt_port;
 
     bool m1_dir;
     bool m2_dir;
@@ -91,6 +96,8 @@ typedef struct device_config_t{
     uint8_t input_actions[4];
     uint8_t output_actions[2];
 
+    char sw_version[32];
+    char hw_version[32];
 } device_config_t;
 
 
