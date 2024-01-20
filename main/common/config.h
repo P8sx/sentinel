@@ -5,7 +5,9 @@
 #include "common/types.h"
 
 extern device_config_t device_config;
+void save_config();
 void config_init();
+void migrate_config();
 void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
 
 /* Analog PINS */
@@ -92,5 +94,6 @@ void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_th
 #define CONTROL_LOG_TAG         "CONTROL"
 #define UI_LOG_TAG              "UI"
 #define CFG_LOG_TAG             "CFG"
+#define MQTT_LOG_TAG            "MQTT"
 
 #endif

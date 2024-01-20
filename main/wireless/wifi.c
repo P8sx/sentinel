@@ -37,6 +37,8 @@
 #include "io/gate.h"
 #include "esp_ota_ops.h"
 #include <esp_ghota.h>
+#include "mqtt_client.h"
+
 
 static ghota_client_handle_t *ghota_client = NULL;
 static atomic_uint_fast8_t ghota_update_progress = 0;
@@ -47,9 +49,11 @@ uint8_t ghota_get_update_progress(){
     uint8_t progress = atomic_load(&ghota_update_progress);
     return progress;
 }
+
 void ghota_start_check(){
     ghota_start_update_task(ghota_client);
 }
+
 static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     ghota_client_handle_t *client = (ghota_client_handle_t *)arg;
     ESP_LOGI(GHOTA_LOG_TAG, "Got Update Callback: %s", ghota_get_event_str(event_id));
@@ -66,6 +70,28 @@ static void gate_ghota_event_handler(void* arg, esp_event_base_t event_base, int
     }
     (void)client;
 }
+
+void ghota_config_init(){
+    // wifi_ap_record_t ap_info;
+    // if(ESP_OK != esp_wifi_sta_get_ap_info(&ap_info)){
+    //     ESP_LOGE(GHOTA_LOG_TAG, "WiFi not connected, ota initialization failed");
+    //     return;
+    // }
+
+    ghota_config_t ghconfig = {
+        .filenamematch = "sentinel-esp32s3.bin",
+        .storagenamematch = "storage-esp32.bin",
+        .updateInterval = 0,
+    };
+    ghota_client = ghota_init(&ghconfig);
+    if (NULL == ghota_client) {
+        ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
+    }
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &gate_ghota_event_handler, ghota_client, NULL));
+    ESP_LOGI(GHOTA_LOG_TAG, "Init successful");
+}
+
+
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
@@ -95,8 +121,7 @@ bool wifi_connected(){
     return wifi_status;
 }
 
-
-void wifi_init(){
+void wifi_config_init(){
     if(0 == strlen(device_config.wifi_ssid) || 0 == strlen(device_config.wifi_ssid)){
         ESP_LOGE(WIFI_LOG_TAG,"No SSID/Password provided WiFi init failed");
         return;
@@ -128,26 +153,73 @@ void wifi_init(){
     ESP_LOGI(WIFI_LOG_TAG, "wifi_init_sta finished.");
 }
 
-void ota_init(){
-    // wifi_ap_record_t ap_info;
-    // if(ESP_OK != esp_wifi_sta_get_ap_info(&ap_info)){
-    //     ESP_LOGE(GHOTA_LOG_TAG, "WiFi not connected, ota initialization failed");
-    //     return;
-    // }
 
-    ghota_config_t ghconfig = {
-        .filenamematch = "sentinel-esp32s3.bin",
-        .storagenamematch = "storage-esp32.bin",
-        .updateInterval = 0,
-    };
-    ghota_client = ghota_init(&ghconfig);
-    if (NULL == ghota_client) {
-        ESP_LOGE(GHOTA_LOG_TAG, "ghota_client_init failed");
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    ESP_LOGD(MQTT_LOG_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
+    esp_mqtt_event_handle_t event = event_data;
+    esp_mqtt_client_handle_t client = event->client;
+    int msg_id;
+    switch ((esp_mqtt_event_id_t)event_id) {
+    case MQTT_EVENT_CONNECTED:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_CONNECTED");
+        // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
+        // ESP_LOGI(MQTT_LOG_TAG, "sent publish successful, msg_id=%d", msg_id);
+
+        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+        // ESP_LOGI(MQTT_LOG_TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
+        // ESP_LOGI(MQTT_LOG_TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+        // msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
+        // ESP_LOGI(MQTT_LOG_TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+        break;
+    case MQTT_EVENT_DISCONNECTED:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_DISCONNECTED");
+        break;
+
+    case MQTT_EVENT_SUBSCRIBED:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
+        ESP_LOGI(MQTT_LOG_TAG, "sent publish successful, msg_id=%d", msg_id);
+        break;
+    case MQTT_EVENT_UNSUBSCRIBED:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
+        break;
+    case MQTT_EVENT_PUBLISHED:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        break;
+    case MQTT_EVENT_DATA:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_DATA");
+        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        printf("DATA=%.*s\r\n", event->data_len, event->data);
+        break;
+    case MQTT_EVENT_ERROR:
+        ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_ERROR");
+        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+            ESP_LOGI(MQTT_LOG_TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+
+        }
+        break;
+    default:
+        ESP_LOGI(MQTT_LOG_TAG, "Other event id:%d", event->event_id);
+        break;
     }
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(GHOTA_EVENTS, ESP_EVENT_ANY_ID, &gate_ghota_event_handler, ghota_client, NULL));
-    ESP_LOGI(GHOTA_LOG_TAG, "Init successful");
 }
 
+void mqtt_config_init(){
+    if(0 == strlen(device_config.mqtt_server)){
+        ESP_LOGE(MQTT_LOG_TAG,"No MQTT URI provided");
+        return;
+    }
+    esp_mqtt_client_config_t mqtt_cfg = {};
+    memcpy(&(mqtt_cfg.broker.address), &(device_config.mqtt_server), sizeof(mqtt_cfg.broker.address));
+
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(client);
+}
 
 
 

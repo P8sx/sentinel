@@ -36,6 +36,7 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(nvs_flash_init_partition("nvs_ext"));
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    migrate_config();
     config_init();
 
     io_init();
@@ -48,7 +49,7 @@ void app_main(void)
     xTaskCreatePinnedToCore(gate_task, "gate_m1_task", 4096, (void *)M1, configMAX_PRIORITIES - 1, &gate_m1_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(gate_task, "gate_m2_task", 4096, (void *)M2, configMAX_PRIORITIES - 1, &gate_m2_task_handle, APP_CPU_NUM);
 
-    wifi_init();
+    wifi_config_init();
     xTaskCreatePinnedToCore(tcp_server_task, "tcp_server", 4096, NULL, 5, &tcp_server_task_handle, PRO_CPU_NUM);
 
 
@@ -60,8 +61,8 @@ void app_main(void)
     }
 
     rf433_init();
-    ota_init();
-
+    ghota_config_init();
+    mqtt_config_init();
 
     io_buzzer(1,50,100);
     ESP_LOGI("MAIN","INIT DONE");

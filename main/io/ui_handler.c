@@ -270,7 +270,7 @@ menu_return_result_e ui_menu_control_submenu(motor_id_t motor_id){
             }
         }            
         if(btn.event == BUTTON_RELESED){
-            const char *wing_label = (motor_id == M1) ? "Right wing(M1)" : (motor_id == M2) ? "Left wing(M2)" : "Both wing";
+            const char *wing_label = (motor_id == M1) ? "Control->Right wing(M1)" : (motor_id == M2) ? "Control->Left wing(M2)" : "Control->Both wing";
             i2c_oled_menu(wing_label, pos, 4, "Next state", "Open", "Close", "Stop");      
         }
     }
