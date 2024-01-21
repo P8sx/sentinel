@@ -5,27 +5,30 @@
 #include "stdatomic.h"
 #include "stdbool.h"
 
-#define WING_CMD(cmd_action, cmd_id) (wing_command_t){ .action = cmd_action, .id = cmd_id }
-#define STATE_STRING(num)  ((const char *[]){"OPENED","OPENING","CLOSED","CLOSING","STOPPED_OPENING","STOPPED_CLOSING", "UNKNOWN"}[(num%8)])
-#define STATE_STRING_NORMALIZED(num)  ((const char *[]){"Opened","Opening","Closed","Closing","Stopped","Stopped", "Unknown"}[(num%8)])
-#define INPUT_ACTION_TO_GATE_COMMAND(inputAction)  ((wing_command_t) { .id = (wing_id_t)(inputAction & 0x0F), .action = (wing_action_t)(inputAction & 0xF0)})
+#define WING_CMD(cmd_action, cmd_id) \
+    (wing_command_t) { .action = cmd_action, .id = cmd_id }
+#define STATE_STRING(num) ((const char *[]){"OPENED", "OPENING", "CLOSED", "CLOSING", "STOPPED_OPENING", "STOPPED_CLOSING", "UNKNOWN"}[(num % 8)])
+#define STATE_STRING_NORMALIZED(num) ((const char *[]){"Opened", "Opening", "Closed", "Closing", "Stopped", "Stopped", "Unknown"}[(num % 8)])
+#define INPUT_ACTION_TO_GATE_COMMAND(inputAction) ((wing_command_t){.id = (wing_id_t)(inputAction & 0x0F), .action = (wing_action_t)(inputAction & 0xF0)})
 
-
-typedef enum wing_id_t {
+typedef enum wing_id_t
+{
     RIGHT_WING      = 0x01,
     LEFT_WING       = 0x02,
     BOTH_WING       = 0x03,
 } wing_id_t;
 
-typedef enum wing_action_t {
-    OPEN        = 0x10,
-    CLOSE       = 0x20,
-    STOP        = 0x30,
-    NEXT_STATE  = 0x40,
-    HW_STOP     = 0x50,
+typedef enum wing_action_t
+{
+    OPEN            = 0x10,
+    CLOSE           = 0x20,
+    STOP            = 0x30,
+    NEXT_STATE      = 0x40,
+    HW_STOP         = 0x50,
 } wing_action_t;
 
-typedef enum wing_state_t {
+typedef enum wing_state_t
+{
     OPENED,
     OPENING,
     CLOSED,
@@ -35,20 +38,20 @@ typedef enum wing_state_t {
     UNKNOWN,
 } wing_state_t;
 
-
-typedef struct wing_info_t{
+typedef struct wing_info_t
+{
     wing_id_t id;
     wing_state_t state;
 } wing_info_t;
 
-typedef struct wing_command_t{
+typedef struct wing_command_t
+{
     wing_id_t id;
     wing_action_t action;
 } wing_command_t;
 
-
-
-typedef enum input_action_t {
+typedef enum input_action_t
+{
     RIGHT_WING_OPEN         = RIGHT_WING    | OPEN,
     LEFT_WING_OPEN          = LEFT_WING     | OPEN,
     BOTH_WING_OPEN          = BOTH_WING     | OPEN,
@@ -64,7 +67,8 @@ typedef enum input_action_t {
     UNKNOWN_ACTION          = 0xFF,
 } input_action_t;
 
-typedef enum output_action_t{
+typedef enum output_action_t
+{
     RIGHT_WING_MOVING_BLINK,
     LEFT_WING_MOVING_BLINK,
     BOTH_WING_MOVING_BLINK,
@@ -73,16 +77,17 @@ typedef enum output_action_t{
     BOTH_WING_MOVING_ON,
 } output_action_t;
 
-typedef struct device_config_t{
+typedef struct device_config_t
+{
     char wifi_ssid[32];
     char wifi_password[64];
-    
+
     char mqtt_uri[64];
     char mqtt_password[64];
     char mqtt_username[64];
 
     char device_name[64];
-    
+
     uint32_t mqtt_port;
 
     bool right_wing_dir;
@@ -100,10 +105,10 @@ typedef struct device_config_t{
     char hw_version[32];
 } device_config_t;
 
-
-typedef struct rf_remote_config_t{
+typedef struct rf_remote_config_t
+{
     uint64_t id;
-    uint8_t action; 
+    uint8_t action;
 } rf_remote_config_t;
 
 #endif

@@ -19,8 +19,9 @@ typedef enum wing_event_e
     WING_ERROR_OCCURED = 1,
 } wing_event_e;
 
-typedef struct wing_t {
-    const wing_id_t id; 
+typedef struct wing_t
+{
+    const wing_id_t id;
     atomic_uint_fast8_t state;
     atomic_int_fast16_t open_pcnt;
     atomic_int_fast16_t close_pcnt;
