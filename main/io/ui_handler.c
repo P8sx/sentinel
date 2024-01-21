@@ -26,7 +26,7 @@ static SemaphoreHandle_t ui_task_mutex = NULL;
 extern TaskHandle_t ui_handler_button_task_handle;
 extern TaskHandle_t ui_handler_oled_display_task_handle;
 
-extern QueueHandle_t gate_action_queue;
+extern QueueHandle_t wing_action_queue;
 
 static QueueHandle_t button_queue = NULL;
 
@@ -100,25 +100,25 @@ void ui_handler_init(){
 
 
 // NEED MAJOR REFACTOR #spaghetti code
-menu_return_result_e ui_menu_configuration_submenu(motor_id_t motor_id){
+menu_return_result_e ui_menu_configuration_submenu(wing_id_t wing_id){
     uint8_t pos = 0;
     button_event_t btn;
     char option_labels[3][30];
-    const char *menu_label = (motor_id == M1) ? "Configuration->M1": "Configuration->M2";
+    const char *menu_label = (wing_id == RIGHT_WING) ? "Configuration->RIGHT_WING": "Configuration->LEFT_WING";
 
     float ocp_threshold;
     uint16_t ocp_count;
     bool direction;
 
-    if(motor_id == M1){
-         ocp_threshold = (float)device_config.m1_ocp_threshold/1000;
-         ocp_count = (float)device_config.m1_ocp_count;
-         direction = (float)device_config.m1_dir;
+    if(wing_id == RIGHT_WING){
+         ocp_threshold = (float)device_config.right_wing_ocp_threshold/1000;
+         ocp_count = (float)device_config.right_wing_ocp_count;
+         direction = (float)device_config.right_wing_dir;
     }
     else{
-        ocp_threshold = (float)device_config.m2_ocp_threshold/1000;
-        ocp_count = (float)device_config.m2_ocp_count;
-        direction = (float)device_config.m2_dir;
+        ocp_threshold = (float)device_config.left_wing_ocp_threshold/1000;
+        ocp_count = (float)device_config.left_wing_ocp_count;
+        direction = (float)device_config.left_wing_dir;
     }
 
     snprintf(option_labels[0], sizeof(option_labels[0]), "OCP Threshold   %.2fA",ocp_threshold);
@@ -198,7 +198,7 @@ menu_return_result_e ui_menu_configuration_submenu(motor_id_t motor_id){
                     break;
 
             }
-            config_update_motor_settings(motor_id, direction, ocp_threshold*1000, ocp_count);
+            config_update_wing_settings(wing_id, direction, ocp_threshold*1000, ocp_count);
             if(return_result == 0xFF) 
                 return TIMER_RETURN;
         }
@@ -223,10 +223,10 @@ menu_return_result_e ui_menu_configuration_menu(){
                     return USER_RETURN;
                     break;
                 case 1:
-                    return_result = ui_menu_configuration_submenu(M1);
+                    return_result = ui_menu_configuration_submenu(RIGHT_WING);
                     break;
                 case 2:
-                    return_result = ui_menu_configuration_submenu(M2);
+                    return_result = ui_menu_configuration_submenu(LEFT_WING);
                     break;
                 default:
                     break;
@@ -235,12 +235,12 @@ menu_return_result_e ui_menu_configuration_menu(){
                 return TIMER_RETURN;
         }            
         if(btn.event == BUTTON_RELESED) 
-            i2c_oled_menu("Configuration", pos, 2, "M1", "M2");
+            i2c_oled_menu("Configuration", pos, 2, "RIGHT_WING", "LEFT_WING");
     }
     return TIMER_RETURN;
 }
 
-menu_return_result_e ui_menu_control_submenu(motor_id_t motor_id){
+menu_return_result_e ui_menu_control_submenu(wing_id_t wing_id){
     uint8_t pos = 1;
     button_event_t btn;
     while(RECEIVE_FROM_BTN_QUEUE(btn)){
@@ -254,23 +254,23 @@ menu_return_result_e ui_menu_control_submenu(motor_id_t motor_id){
                     return USER_RETURN;
                     break;
                 case 1:
-                    xQueueSend(gate_action_queue, &GATE_CMD(NEXT_STATE, motor_id), pdMS_TO_TICKS(1000));
+                    xQueueSend(wing_action_queue, &WING_CMD(NEXT_STATE, wing_id), pdMS_TO_TICKS(1000));
                     break;
                 case 2:
-                    xQueueSend(gate_action_queue, &GATE_CMD(OPEN, motor_id), pdMS_TO_TICKS(1000));
+                    xQueueSend(wing_action_queue, &WING_CMD(OPEN, wing_id), pdMS_TO_TICKS(1000));
                     break;
                 case 3:
-                    xQueueSend(gate_action_queue, &GATE_CMD(CLOSE, motor_id), pdMS_TO_TICKS(1000));
+                    xQueueSend(wing_action_queue, &WING_CMD(CLOSE, wing_id), pdMS_TO_TICKS(1000));
                     break;
                 case 4:
-                    xQueueSend(gate_action_queue, &GATE_CMD(STOP, motor_id), pdMS_TO_TICKS(1000));
+                    xQueueSend(wing_action_queue, &WING_CMD(STOP, wing_id), pdMS_TO_TICKS(1000));
                     break;
                 default:
                     break;
             }
         }            
         if(btn.event == BUTTON_RELESED){
-            const char *wing_label = (motor_id == M1) ? "Control->Right wing(M1)" : (motor_id == M2) ? "Control->Left wing(M2)" : "Control->Both wing";
+            const char *wing_label = (wing_id == RIGHT_WING) ? "Control->Right wing" : (wing_id == LEFT_WING) ? "Control->Left wing" : "Control->Both wing";
             i2c_oled_menu(wing_label, pos, 4, "Next state", "Open", "Close", "Stop");      
         }
     }
@@ -292,13 +292,13 @@ menu_return_result_e ui_menu_control_menu(){
                     return USER_RETURN;
                     break;
                 case 1:
-                    return_result = ui_menu_control_submenu(M1M2);
+                    return_result = ui_menu_control_submenu(BOTH_WING);
                     break;
                 case 2:
-                    return_result = ui_menu_control_submenu(M1);
+                    return_result = ui_menu_control_submenu(RIGHT_WING);
                     break;
                 case 3:
-                    return_result = ui_menu_control_submenu(M2);
+                    return_result = ui_menu_control_submenu(LEFT_WING);
                     break;
                 default:
                     break;
@@ -308,7 +308,7 @@ menu_return_result_e ui_menu_control_menu(){
             pos = 0;
         }            
         if(btn.event == BUTTON_RELESED) 
-            i2c_oled_menu("Control", pos, 3,"Both wings", "Right wing(M1)", "Left wing(M2)");
+            i2c_oled_menu("Control", pos, 3,"Both wings", "Right wing", "Left wing");
     }
     return TIMER_RETURN;
 }
@@ -392,7 +392,7 @@ void ui_oled_display_task(void *pvParameters){
                 animation_toggle = !animation_toggle;
             }
             uint8_t screen_saver_time = (xTimerGetExpiryTime(ui_screen_saver_timer_handle)-xTaskGetTickCount())/pdMS_TO_TICKS(1000);
-            i2c_oled_home_screen(screen_saver_time, io_get_soc_temp(), wifi_connected(), gate_get_state(M1), gate_get_state(M2), animation_toggle);
+            i2c_oled_home_screen(screen_saver_time, io_get_soc_temp(), wifi_connected(), wing_get_state(RIGHT_WING), wing_get_state(LEFT_WING), animation_toggle);
             break;
         case SCREEN_GHOTA_START_CHECK:
             i2c_oled_ota_start_check();

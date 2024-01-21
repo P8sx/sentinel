@@ -18,13 +18,13 @@ void io_handler_init();
 void io_handler_input_handling_task(void *pvParameters);
 
 /* IO Controll */
-void io_motor_dir(motor_id_t id, uint8_t clockwise);
-void io_motor_stop(motor_id_t id);
-void io_motor_pwm(motor_id_t id, uint32_t freq);
-void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time);
+void io_wing_dir(wing_id_t id, uint8_t clockwise);
+void io_wing_stop(wing_id_t id);
+void io_wing_pwm(wing_id_t id, uint32_t freq);
+void io_wing_fade(wing_id_t id, uint32_t target, uint32_t time);
 
-int32_t io_motor_get_pcnt(motor_id_t id);
-uint16_t io_motor_get_current(motor_id_t id);                           // in mA
+int32_t io_wing_get_pcnt(wing_id_t id);
+uint16_t io_wing_get_current(wing_id_t id);                           // in mA
 
 
 float io_get_soc_temp();

@@ -23,9 +23,9 @@
 #include <string.h>
 
 TaskHandle_t tcp_server_task_handle = NULL;
-TaskHandle_t motor_action_task_handle = NULL;
-TaskHandle_t gate_m1_task_handle = NULL;
-TaskHandle_t gate_m2_task_handle = NULL;
+TaskHandle_t wing_action_task_handle = NULL;
+TaskHandle_t right_wing_task_handle = NULL;
+TaskHandle_t left_wing_task_handle = NULL;
 
 TaskHandle_t ui_handler_button_task_handle = NULL;
 TaskHandle_t ui_handler_oled_display_task_handle = NULL;
@@ -44,10 +44,10 @@ void app_main(void)
 
     init_i2c();
 
-    gate_module_init();
-    xTaskCreatePinnedToCore(gate_action_task, "gate_action_task", 4096, NULL, configMAX_PRIORITIES - 1, &motor_action_task_handle, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(gate_task, "gate_m1_task", 4096, (void *)M1, configMAX_PRIORITIES - 1, &gate_m1_task_handle, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(gate_task, "gate_m2_task", 4096, (void *)M2, configMAX_PRIORITIES - 1, &gate_m2_task_handle, APP_CPU_NUM);
+    wing_module_init();
+    xTaskCreatePinnedToCore(wing_action_task, "wing_action_task", 4096, NULL, configMAX_PRIORITIES - 1, &wing_action_task_handle, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(wing_task, "right_wing_task", 4096, (void *)RIGHT_WING, configMAX_PRIORITIES - 1, &right_wing_task_handle, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(wing_task, "left_wing_task", 4096, (void *)LEFT_WING, configMAX_PRIORITIES - 1, &left_wing_task_handle, APP_CPU_NUM);
 
     wifi_config_init();
     xTaskCreatePinnedToCore(tcp_server_task, "tcp_server", 4096, NULL, 5, &tcp_server_task_handle, PRO_CPU_NUM);

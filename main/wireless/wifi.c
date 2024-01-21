@@ -165,13 +165,14 @@ static char mqtt_right_wing_cmd_topic[128];
 static char mqtt_both_wing_state_topic[128];
 static char mqtt_both_wing_cmd_topic[128];
 static char mqtt_update_topic[128];
+static char mqtt_uptime_topic[128];
+TimerHandle_t mqtt_uptime_timer_handle = NULL;
 
-
-static void wifi_gate_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-     if(MOTOR_STATUS_CHANGED == event_id){
-        gate_status_t gate_status = *(gate_status_t *)event_data;
-        if(M1 == gate_status.id){
-            switch (gate_status.state){
+static void wifi_wing_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+     if(WING_STATUS_CHANGED == event_id){
+        wing_info_t wing_status = *(wing_info_t *)event_data;
+        if(RIGHT_WING == wing_status.id){
+            switch (wing_status.state){
                 case OPENED:
                     esp_mqtt_client_publish(mqtt_client, mqtt_right_wing_state_topic, "open", 0, 1, 1);
                 break;
@@ -191,8 +192,8 @@ static void wifi_gate_event_handler(void* arg, esp_event_base_t event_base, int3
                 default:
                 break;
             }
-        } else if(M2 == gate_status.id){
-            switch (gate_status.state){
+        } else if(LEFT_WING == wing_status.id){
+            switch (wing_status.state){
                 case OPENED:
                     esp_mqtt_client_publish(mqtt_client, mqtt_left_wing_state_topic, "open", 0, 1, 1);
                 break;
@@ -213,8 +214,8 @@ static void wifi_gate_event_handler(void* arg, esp_event_base_t event_base, int3
                 break;
             }
         }
-        gate_state_t m1m2_state = gate_get_state(M1M2);
-        switch (m1m2_state){
+        wing_state_t right_wingleft_wing_state = wing_get_state(BOTH_WING);
+        switch (right_wingleft_wing_state){
             case OPENED:
                 esp_mqtt_client_publish(mqtt_client, mqtt_both_wing_state_topic, "open", 0, 1, 1);
             break;
@@ -236,7 +237,9 @@ static void wifi_gate_event_handler(void* arg, esp_event_base_t event_base, int3
         }
     }
 }
-void mqtt_cover_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* wing_name, const char* availability_topic, const char* state_topic, const char* command_topic) {
+
+
+static void mqtt_cover_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* wing_name, const char* availability_topic, const char* state_topic, const char* command_topic) {
   snprintf(config_buffer,
            size,
            "{"
@@ -247,7 +250,7 @@ void mqtt_cover_config(char* config_buffer, size_t size, const char* name, const
            "\"state_topic\": \"%s\","
            "\"payload_available\": \"1\","
            "\"payload_not_available\": \"0\","
-           "\"availability_mode\": \"latest\","
+           "\"availability_mode\": \"any\","
            "\"device\": {"
            "\"identifiers\": [\"%s\"],"
            "\"manufacturer\": \"P8sx\","
@@ -260,14 +263,14 @@ void mqtt_cover_config(char* config_buffer, size_t size, const char* name, const
            "}",
            name, device_name, wing_name, availability_topic, command_topic, state_topic, device_name, device_config.sw_version, device_config.hw_version);
 }
-void mqtt_button_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* unique_id, const char* availability_topic, const char* command_topic) {
+static void mqtt_update_button_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* unique_id, const char* availability_topic, const char* command_topic) {
   snprintf(config_buffer,
            size,
            "{"
            "\"name\": \"%s\","
            "\"unique_id\": \"%s-%s\","
            "\"availability_topic\": \"%s\","
-           "\"availability_mode\": \"latest\","
+           "\"availability_mode\": \"any\","
            "\"command_topic\": \"%s\","
            "\"payload_available\": \"1\","
            "\"payload_not_available\": \"0\","
@@ -285,6 +288,39 @@ void mqtt_button_config(char* config_buffer, size_t size, const char* name, cons
            "}",
            name, device_name, unique_id, availability_topic, command_topic, device_name, device_config.sw_version, device_config.hw_version);
 }
+static void mqtt_diagnostic_sensor_config(char* config_buffer, size_t size, const char* name, const char* device_name, const char* unique_id, const char* availability_topic, const char* state_topic) {
+  snprintf(config_buffer,
+           size,
+            "{"
+            "\"name\": \"%s\","
+            "\"unique_id\": \"%s-%s\","
+            "\"availability_topic\": \"%s\","
+            "\"availability_mode\": \"any\","
+            "\"state_topic\": \"%s\","
+            "\"payload_available\": \"1\","
+            "\"unit_of_measurement\": \"s\","
+            "\"payload_not_available\": \"0\","
+            "\"device\": {"
+            "\"identifiers\": [\"%s\"],"
+            "\"manufacturer\": \"P8sx\","
+            "\"model\": \"Sentinel\","
+            "\"name\": \"Sentinel\","
+            "\"sw_version\": \"%s\","
+            "\"hw_version\": \"%s\""
+            "},"
+            "\"entity_category\": \"diagnostic\","
+            "\"payload_press\": \"\""
+            "}",
+           name, device_name, unique_id, availability_topic, state_topic, device_name, device_config.sw_version, device_config.hw_version);
+}
+
+
+static  void mqtt_uptime_timer_callback(TimerHandle_t xTimer) {
+    char str[10];
+    snprintf(str, 10, "%li", (long)(esp_timer_get_time()/1000/1000));
+    esp_mqtt_client_publish(mqtt_client, mqtt_uptime_topic, str, 0, 1, 1);
+}
+
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -292,7 +328,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
 
-    static char config[512];
+    #define MQTT_CFG_SIZE 640
+    static char config[MQTT_CFG_SIZE];
     static char config_topic[128];
 
     switch ((esp_mqtt_event_id_t)event_id) {
@@ -301,30 +338,36 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
         /* Publish cover configuration */
         snprintf(config_topic, sizeof(config_topic),"homeassistant/cover/%s/left-wing/config", device_config.device_name);
-        mqtt_cover_config(config, 512, "Left wing", device_config.device_name, "left-wing", mqtt_availability_topic, mqtt_left_wing_state_topic, mqtt_left_wing_cmd_topic);
+        mqtt_cover_config(config, MQTT_CFG_SIZE, "Left wing", device_config.device_name, "left-wing", mqtt_availability_topic, mqtt_left_wing_state_topic, mqtt_left_wing_cmd_topic);
         esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
         esp_mqtt_client_subscribe(client, mqtt_left_wing_cmd_topic, 1);
 
         snprintf(config_topic, sizeof(config_topic),"homeassistant/cover/%s/right-wing/config", device_config.device_name);
-        mqtt_cover_config(config, 512, "Right wing", device_config.device_name, "right-wing", mqtt_availability_topic, mqtt_right_wing_state_topic, mqtt_right_wing_cmd_topic);
+        mqtt_cover_config(config, MQTT_CFG_SIZE, "Right wing", device_config.device_name, "right-wing", mqtt_availability_topic, mqtt_right_wing_state_topic, mqtt_right_wing_cmd_topic);
         esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
         esp_mqtt_client_subscribe(client, mqtt_right_wing_cmd_topic, 1);
 
         snprintf(config_topic, sizeof(config_topic),"homeassistant/cover/%s/both-wing/config", device_config.device_name);
-        mqtt_cover_config(config, 512, "Both wing", device_config.device_name, "both-wing", mqtt_availability_topic, mqtt_both_wing_state_topic, mqtt_both_wing_cmd_topic);
+        mqtt_cover_config(config, MQTT_CFG_SIZE, "Both wing", device_config.device_name, "both-wing", mqtt_availability_topic, mqtt_both_wing_state_topic, mqtt_both_wing_cmd_topic);
         esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
         esp_mqtt_client_subscribe(client, mqtt_both_wing_cmd_topic, 1);
 
         snprintf(config_topic, sizeof(config_topic), "homeassistant/button/%s/update/config", device_config.device_name);
-        mqtt_button_config(config, 512, "OTA Update", device_config.device_name, "update", mqtt_availability_topic, mqtt_update_topic);
+        mqtt_update_button_config(config, MQTT_CFG_SIZE, "OTA Update", device_config.device_name, "update", mqtt_availability_topic, mqtt_update_topic);
         esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
         esp_mqtt_client_subscribe(client, mqtt_update_topic, 1);
 
+        snprintf(config_topic, sizeof(config_topic), "homeassistant/sensor/%s/uptime/config", device_config.device_name);
+        mqtt_diagnostic_sensor_config(config, MQTT_CFG_SIZE, "Uptime", device_config.device_name, "uptime", mqtt_availability_topic, mqtt_uptime_topic);
+        esp_mqtt_client_publish(client, config_topic, config, 0, 1, 1);
+
         /* Publish availability status */
         esp_mqtt_client_publish(client, mqtt_availability_topic, "1", 0, 1, 0);
+        xTimerStart(mqtt_uptime_timer_handle, 0);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_DISCONNECTED");
+        xTimerStop(mqtt_uptime_timer_handle, 0);
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -341,17 +384,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_DATA:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_DATA");
         if (strncmp(event->topic, mqtt_right_wing_cmd_topic, event->topic_len) == 0) {
-            xQueueSend(gate_action_queue, &GATE_CMD(
+            xQueueSend(wing_action_queue, &WING_CMD(
                 (strncmp("OPEN", event->data, event->data_len) == 0) ? OPEN :
-                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, M1), pdMS_TO_TICKS(500));
+                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, RIGHT_WING), pdMS_TO_TICKS(500));
         } else if (strncmp(event->topic, mqtt_left_wing_cmd_topic, event->topic_len) == 0) {
-            xQueueSend(gate_action_queue, &GATE_CMD(
+            xQueueSend(wing_action_queue, &WING_CMD(
                 (strncmp("OPEN", event->data, event->data_len) == 0) ? OPEN :
-                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, M2), pdMS_TO_TICKS(500));
+                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, LEFT_WING), pdMS_TO_TICKS(500));
         } else if (strncmp(event->topic, mqtt_both_wing_cmd_topic, event->topic_len) == 0) {
-            xQueueSend(gate_action_queue, &GATE_CMD(
+            xQueueSend(wing_action_queue, &WING_CMD(
                 (strncmp("OPEN", event->data, event->data_len) == 0) ? OPEN :
-                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, M1M2), pdMS_TO_TICKS(500));
+                (strncmp("CLOSE", event->data, event->data_len) == 0) ? CLOSE : STOP, BOTH_WING), pdMS_TO_TICKS(500));
         }
 
         if(strncmp(event->topic, mqtt_update_topic, event->topic_len) == 0){
@@ -386,6 +429,9 @@ void mqtt_config_init(){
     snprintf(mqtt_both_wing_state_topic, sizeof(mqtt_both_wing_state_topic), "sentinel/%s/%s/state", device_config.device_name, "both-wing");
     snprintf(mqtt_both_wing_cmd_topic, sizeof(mqtt_both_wing_cmd_topic), "sentinel/%s/%s/cmd", device_config.device_name, "both-wing");
     snprintf(mqtt_update_topic, sizeof(mqtt_update_topic), "sentinel/%s/%s/cmd", device_config.device_name, "update");
+    snprintf(mqtt_uptime_topic, sizeof(mqtt_uptime_topic), "sentinel/%s/%s/state", device_config.device_name, "uptime");
+
+    mqtt_uptime_timer_handle = xTimerCreate("mqtt_uptime", pdMS_TO_TICKS(10*1000), pdTRUE, (void*)0, mqtt_uptime_timer_callback);
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = device_config.mqtt_uri,
@@ -398,13 +444,15 @@ void mqtt_config_init(){
         .session.keepalive = 10,
         .buffer.out_size = 1024,
         .buffer.size = 1024,
+        .network.disable_auto_reconnect = false,
+        .network.reconnect_timeout_ms = 5000,
     };
     ESP_LOGI(MQTT_LOG_TAG, "%s",mqtt_cfg.broker.address.uri);
 
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     ESP_ERROR_CHECK(esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL));
     ESP_ERROR_CHECK(esp_mqtt_client_start(mqtt_client));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(GATE_EVENTS, ESP_EVENT_ANY_ID, &wifi_gate_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(GATE_EVENTS, ESP_EVENT_ANY_ID, &wifi_wing_event_handler, NULL, NULL));
 }
 
 
@@ -430,59 +478,59 @@ static void tcp_receive_handle(const int sock)
                 int timer = esp_timer_get_time()/1000/1000;
                 snprintf(tx_buffer, 128, "device uptime:%is\n", timer);
             }
-            else if(strcmp(rx_buffer, "open m1") == 0){
-                gate_command_t cmd = {.action = OPEN, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "open right_wing") == 0){
+                wing_command_t cmd = {.action = OPEN, .id = RIGHT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "close m1") == 0){
-                gate_command_t cmd = {.action = CLOSE, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "close right_wing") == 0){
+                wing_command_t cmd = {.action = CLOSE, .id = RIGHT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "stop m1") == 0){
-                gate_command_t cmd = {.action = STOP, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "stop right_wing") == 0){
+                wing_command_t cmd = {.action = STOP, .id = RIGHT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "next m1") == 0){
-                gate_command_t cmd = {.action = NEXT_STATE, .id = M1};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "next right_wing") == 0){
+                wing_command_t cmd = {.action = NEXT_STATE, .id = RIGHT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "open m2") == 0){
-                gate_command_t cmd = {.action = OPEN, .id = M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "open left_wing") == 0){
+                wing_command_t cmd = {.action = OPEN, .id = LEFT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "close m2") == 0){
-                gate_command_t cmd = {.action = CLOSE, .id = M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "close left_wing") == 0){
+                wing_command_t cmd = {.action = CLOSE, .id = LEFT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "stop m2") == 0){
-                gate_command_t cmd = {.action = STOP, .id = M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "stop left_wing") == 0){
+                wing_command_t cmd = {.action = STOP, .id = LEFT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
-            else if(strcmp(rx_buffer, "next m2") == 0){
-                gate_command_t cmd = {.action = NEXT_STATE, .id = M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+            else if(strcmp(rx_buffer, "next left_wing") == 0){
+                wing_command_t cmd = {.action = NEXT_STATE, .id = LEFT_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "open") == 0){
-                gate_command_t cmd = {.action = OPEN, .id = M1M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+                wing_command_t cmd = {.action = OPEN, .id = BOTH_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "close") == 0){
-                gate_command_t cmd = {.action = CLOSE, .id = M1M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+                wing_command_t cmd = {.action = CLOSE, .id = BOTH_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "stop") == 0){
-                gate_command_t cmd = {.action = STOP, .id = M1M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+                wing_command_t cmd = {.action = STOP, .id = BOTH_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "next") == 0){
-                gate_command_t cmd = {.action = NEXT_STATE, .id = M1M2};
-                xQueueSend(gate_action_queue, &cmd, portMAX_DELAY);
+                wing_command_t cmd = {.action = NEXT_STATE, .id = BOTH_WING};
+                xQueueSend(wing_action_queue, &cmd, portMAX_DELAY);
             }
             else if(strcmp(rx_buffer, "status") == 0){
-                gate_state_t m1 = gate_get_state(M1);
-                gate_state_t m2 = gate_get_state(M2);
+                wing_state_t right_wing = wing_get_state(RIGHT_WING);
+                wing_state_t left_wing = wing_get_state(LEFT_WING);
 
-                snprintf(tx_buffer, 128, "M1:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, M2:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATE_STRING(m1), (int)io_motor_get_pcnt(M1), (int)io_motor_get_current(M1), (int)gate_get_open_pcnt(M1), (int)gate_get_close_pcnt(M1), STATE_STRING(m2), (int)io_motor_get_pcnt(M2), (int)io_motor_get_current(M2), (int)gate_get_open_pcnt(M2), (int)gate_get_close_pcnt(M2));
+                snprintf(tx_buffer, 128, "RIGHT_WING:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, LEFT_WING:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n",STATE_STRING(right_wing), (int)io_wing_get_pcnt(RIGHT_WING), (int)io_wing_get_current(RIGHT_WING), (int)wing_get_open_pcnt(RIGHT_WING), (int)wing_get_close_pcnt(RIGHT_WING), STATE_STRING(left_wing), (int)io_wing_get_pcnt(LEFT_WING), (int)io_wing_get_current(LEFT_WING), (int)wing_get_open_pcnt(LEFT_WING), (int)wing_get_close_pcnt(LEFT_WING));
             }
             else if(strcmp(rx_buffer, "partition") == 0){
                 const esp_partition_t *test = esp_ota_get_boot_partition();

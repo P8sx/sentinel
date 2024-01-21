@@ -11,7 +11,7 @@ void init_i2c_oled();
 bool i2c_oled_initialized();
 void i2c_oled_power_save(bool enable);
 void i2c_oled_welcome_screen();
-void i2c_oled_home_screen(uint8_t screen_saver, float soc_temp, bool wifi_status, gate_state_t m1_state, gate_state_t m2_state, bool animation_toggle);
+void i2c_oled_home_screen(uint8_t screen_saver, float soc_temp, bool wifi_status, wing_state_t right_wing_state, wing_state_t left_wing_state, bool animation_toggle);
 
 void i2c_oled_ota_update(uint8_t progress);
 void i2c_oled_ota_start_check();

@@ -12,14 +12,14 @@
 
 
 device_config_t device_config = {
-    .m1_dir = false,
-    .m2_dir = false,
-    .m1_ocp_threshold = 1100,
-    .m2_ocp_threshold = 1200,
-    .m1_ocp_count = 150,
-    .m2_ocp_count = 150,
-    .input_actions = {M1M2_NEXT_STATE, UNKNOWN_ACTION, UNKNOWN_ACTION, UNKNOWN_ACTION},
-    .output_actions = {M1M2_MOVING_ON, M1M2_MOVING_BLINK},
+    .right_wing_dir = false,
+    .left_wing_dir = false,
+    .right_wing_ocp_threshold = 1100,
+    .left_wing_ocp_threshold = 1200,
+    .right_wing_ocp_count = 150,
+    .left_wing_ocp_count = 150,
+    .input_actions = {BOTH_WING_NEXT_STATE, UNKNOWN_ACTION, UNKNOWN_ACTION, UNKNOWN_ACTION},
+    .output_actions = {BOTH_WING_MOVING_ON, BOTH_WING_MOVING_BLINK},
 };
 
 void load_config_value(nvs_handle_t nvs_handle, const char* key, void* value, size_t size, void* default_value) {
@@ -46,14 +46,14 @@ void config_load(){
     device_config_t initial_device_config = {
         .wifi_ssid = "",
         .wifi_password = "",
-        .m1_dir = false,
-        .m2_dir = false,
-        .m1_ocp_threshold = 1100,
-        .m2_ocp_threshold = 1200,
-        .m1_ocp_count = 150,
-        .m2_ocp_count = 150,
-        .input_actions = {M1M2_NEXT_STATE, M1_STOP, M2_STOP, M1M2_STOP},
-        .output_actions = {M1M2_MOVING_ON, M1M2_MOVING_BLINK},
+        .right_wing_dir = false,
+        .left_wing_dir = false,
+        .right_wing_ocp_threshold = 1100,
+        .left_wing_ocp_threshold = 1200,
+        .right_wing_ocp_count = 150,
+        .left_wing_ocp_count = 150,
+        .input_actions = {BOTH_WING_NEXT_STATE, RIGHT_WING_STOP, LEFT_WING_STOP, BOTH_WING_STOP},
+        .output_actions = {BOTH_WING_MOVING_ON, BOTH_WING_MOVING_BLINK},
         .mqtt_uri = "",
         .mqtt_username = "",
         .mqtt_password = "",
@@ -74,37 +74,37 @@ void config_load(){
     /* Read WIFI password */
     load_config_value(nvs_handle, CFG_WIFI_PASSWORD, &initial_device_config.wifi_password, sizeof(initial_device_config.wifi_password), &initial_device_config.wifi_password);
 
-    /* Read motor configuration */
-    load_config_value(nvs_handle, CFG_M1_DIR, &initial_device_config.m1_dir, sizeof(initial_device_config.m1_dir), &initial_device_config.m1_dir);
-    load_config_value(nvs_handle, CFG_M1_OCP_COUNT, &initial_device_config.m1_ocp_count, sizeof(initial_device_config.m1_ocp_count), &initial_device_config.m1_ocp_count);
-    load_config_value(nvs_handle, CFG_M1_OCP_THRESHOLD, &initial_device_config.m1_ocp_threshold, sizeof(initial_device_config.m1_ocp_threshold), &initial_device_config.m1_ocp_threshold);
+    /* Read wing configuration */
+    load_config_value(nvs_handle, CFG_RIGHT_WING_DIR,           &initial_device_config.right_wing_dir,              sizeof(initial_device_config.right_wing_dir), &initial_device_config.right_wing_dir);
+    load_config_value(nvs_handle, CFG_RIGHT_WING_OCP_COUNT,     &initial_device_config.right_wing_ocp_count,        sizeof(initial_device_config.right_wing_ocp_count), &initial_device_config.right_wing_ocp_count);
+    load_config_value(nvs_handle, CFG_RIGHT_WING_OCP_THRESHOLD, &initial_device_config.right_wing_ocp_threshold,    sizeof(initial_device_config.right_wing_ocp_threshold), &initial_device_config.right_wing_ocp_threshold);
 
-    load_config_value(nvs_handle, CFG_M2_DIR, &initial_device_config.m2_dir, sizeof(initial_device_config.m2_dir), &initial_device_config.m2_dir);
-    load_config_value(nvs_handle, CFG_M2_OCP_COUNT, &initial_device_config.m2_ocp_count, sizeof(initial_device_config.m2_ocp_count), &initial_device_config.m2_ocp_count);
-    load_config_value(nvs_handle, CFG_M2_OCP_THRESHOLD, &initial_device_config.m2_ocp_threshold, sizeof(initial_device_config.m2_ocp_threshold), &initial_device_config.m2_ocp_threshold);
+    load_config_value(nvs_handle, CFG_LEFT_WING_DIR,           &initial_device_config.left_wing_dir,              sizeof(initial_device_config.left_wing_dir), &initial_device_config.left_wing_dir);
+    load_config_value(nvs_handle, CFG_LEFT_WING_OCP_COUNT,     &initial_device_config.left_wing_ocp_count,        sizeof(initial_device_config.left_wing_ocp_count), &initial_device_config.left_wing_ocp_count);
+    load_config_value(nvs_handle, CFG_LEFT_WING_OCP_THRESHOLD, &initial_device_config.left_wing_ocp_threshold,    sizeof(initial_device_config.left_wing_ocp_threshold), &initial_device_config.left_wing_ocp_threshold);
 
     /* Read input/output configuration */
-    load_config_value(nvs_handle, CFG_INPUT_ACTIONS, &initial_device_config.input_actions, sizeof(initial_device_config.input_actions), &initial_device_config.input_actions);
-    load_config_value(nvs_handle, CFG_OUTPUT_ACTIONS, &initial_device_config.output_actions, sizeof(initial_device_config.output_actions), &initial_device_config.output_actions);
+    load_config_value(nvs_handle, CFG_INPUT_ACTIONS,    &initial_device_config.input_actions,       sizeof(initial_device_config.input_actions), &initial_device_config.input_actions);
+    load_config_value(nvs_handle, CFG_OUTPUT_ACTIONS,   &initial_device_config.output_actions,      sizeof(initial_device_config.output_actions), &initial_device_config.output_actions);
 
     /* Read MQTT credentials */
-    load_config_value(nvs_handle, CFG_MQTT_URI, &initial_device_config.mqtt_uri, sizeof(initial_device_config.mqtt_uri), &initial_device_config.mqtt_uri);
-    load_config_value(nvs_handle, CFG_MQTT_PASSWORD, &initial_device_config.mqtt_password, sizeof(initial_device_config.mqtt_password), &initial_device_config.mqtt_password);
-    load_config_value(nvs_handle, CFG_MQTT_USERNAME, &initial_device_config.mqtt_username, sizeof(initial_device_config.mqtt_username), &initial_device_config.mqtt_username);
-    load_config_value(nvs_handle, CFG_MQTT_PORT, &initial_device_config.mqtt_port, sizeof(initial_device_config.mqtt_port), &initial_device_config.mqtt_port);
+    load_config_value(nvs_handle, CFG_MQTT_URI,         &initial_device_config.mqtt_uri,            sizeof(initial_device_config.mqtt_uri), &initial_device_config.mqtt_uri);
+    load_config_value(nvs_handle, CFG_MQTT_PASSWORD,    &initial_device_config.mqtt_password,       sizeof(initial_device_config.mqtt_password), &initial_device_config.mqtt_password);
+    load_config_value(nvs_handle, CFG_MQTT_USERNAME,    &initial_device_config.mqtt_username,       sizeof(initial_device_config.mqtt_username), &initial_device_config.mqtt_username);
+    load_config_value(nvs_handle, CFG_MQTT_PORT,        &initial_device_config.mqtt_port,           sizeof(initial_device_config.mqtt_port), &initial_device_config.mqtt_port);
 
     nvs_close(nvs_handle);
     memcpy(&device_config, &initial_device_config, sizeof(device_config_t));
 }
 
-void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count){
+void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count){
     ESP_LOGI(CFG_LOG_TAG, "Config update start");
     nvs_handle_t nvs_handle;
     ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext",CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
 
-    save_config_value(nvs_handle, M1 == motor_id ? CFG_M1_DIR : CFG_M2_DIR, &dir, sizeof(dir));
-    save_config_value(nvs_handle, M1 == motor_id ? CFG_M1_OCP_THRESHOLD : CFG_M2_OCP_THRESHOLD, &ocp_threshold, sizeof(ocp_threshold));
-    save_config_value(nvs_handle, M1 == motor_id ? CFG_M1_OCP_COUNT : CFG_M2_OCP_COUNT, &ocp_count, sizeof(ocp_count));
+    save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_DIR : CFG_LEFT_WING_DIR, &dir, sizeof(dir));
+    save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_THRESHOLD : CFG_LEFT_WING_OCP_THRESHOLD, &ocp_threshold, sizeof(ocp_threshold));
+    save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_COUNT : CFG_LEFT_WING_OCP_COUNT, &ocp_count, sizeof(ocp_count));
 
     ESP_ERROR_CHECK(nvs_commit(nvs_handle));
     nvs_close(nvs_handle);

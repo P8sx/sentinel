@@ -6,12 +6,12 @@
 
 extern device_config_t device_config;
 void config_load();
-void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
+void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
 
 #define HW_VERSION              "v1.0"
 /* Analog PINS */
-#define M1_SENSE_CHANNEL        ADC_CHANNEL_1              // GPIO2
-#define M2_SENSE_CHANNEL        ADC_CHANNEL_0              // GPIO1
+#define RIGHT_WING_SENSE_CHANNEL        ADC_CHANNEL_1              // GPIO2
+#define LEFT_WING_SENSE_CHANNEL        ADC_CHANNEL_0              // GPIO1
 #define ADC_ATTEN               ADC_ATTEN_DB_2_5
 #define SHUNT_VALUE             10                          // in milliohms
 #define OP_AMP_GAIN             20                          // OP Amp gain for B1 is 20
@@ -20,21 +20,21 @@ void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_th
 #define RF_RECEIVER_PIN         GPIO_NUM_42
 
 /* PCNT Pins*/
-#define M1_PULSE_PIN            GPIO_NUM_41
-#define M2_PULSE_PIN            GPIO_NUM_40
+#define RIGHT_WING_PULSE_PIN            GPIO_NUM_41
+#define LEFT_WING_PULSE_PIN            GPIO_NUM_40
 
 /* PWM Pins */
-#define M1_PWM_PIN              GPIO_NUM_38
-#define M2_PWM_PIN              GPIO_NUM_39
+#define RIGHT_WING_PWM_PIN              GPIO_NUM_38
+#define LEFT_WING_PWM_PIN              GPIO_NUM_39
 
 #define PWM_RESOLUTION          LEDC_TIMER_10_BIT
 #define PWM_LIMIT               (1 << PWM_RESOLUTION) - 1
 
 /* Digital output */
-#define M1_RLY_A_PIN            GPIO_NUM_45
-#define M1_RLY_B_PIN            GPIO_NUM_37
-#define M2_RLY_A_PIN            GPIO_NUM_35
-#define M2_RLY_B_PIN            GPIO_NUM_36
+#define RIGHT_WING_RLY_A_PIN            GPIO_NUM_45
+#define RIGHT_WING_RLY_B_PIN            GPIO_NUM_37
+#define LEFT_WING_RLY_A_PIN            GPIO_NUM_35
+#define LEFT_WING_RLY_B_PIN            GPIO_NUM_36
 
 #define BUZZER_PIN              GPIO_NUM_48
 
@@ -51,10 +51,10 @@ void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_th
 #define INPUT3_PIN              GPIO_NUM_9
 #define INPUT4_PIN              GPIO_NUM_3
 
-#define ENDSTOP_M1_A_PIN        GPIO_NUM_8
-#define ENDSTOP_M1_B_PIN        GPIO_NUM_17
-#define ENDSTOP_M2_A_PIN        GPIO_NUM_18
-#define ENDSTOP_M2_B_PIN        GPIO_NUM_16
+#define ENDSTOP_RIGHT_WING_A_PIN        GPIO_NUM_8
+#define ENDSTOP_RIGHT_WING_B_PIN        GPIO_NUM_17
+#define ENDSTOP_LEFT_WING_A_PIN        GPIO_NUM_18
+#define ENDSTOP_LEFT_WING_B_PIN        GPIO_NUM_16
 
 
 /* Drivers */
@@ -102,13 +102,13 @@ void config_update_motor_settings(motor_id_t motor_id, bool dir, uint16_t ocp_th
 #define CFG_WIFI_SSID           "WIFI_SSID"
 #define CFG_WIFI_PASSWORD       "WIFI_PASSWORD"
 
-#define CFG_M1_DIR              "M1_DIR"
-#define CFG_M1_OCP_COUNT        "M1_OCP_COUNT"
-#define CFG_M1_OCP_THRESHOLD    "M1_OCP_THR"
+#define CFG_RIGHT_WING_DIR              "RW_DIR"
+#define CFG_RIGHT_WING_OCP_COUNT        "RW_OCP_COUNT"
+#define CFG_RIGHT_WING_OCP_THRESHOLD    "RW_OCP_THR"
 
-#define CFG_M2_DIR              "M2_DIR"
-#define CFG_M2_OCP_THRESHOLD    "M2_OCP_THR"
-#define CFG_M2_OCP_COUNT        "M2_OCP_COUNT"
+#define CFG_LEFT_WING_DIR              "LW_DIR"
+#define CFG_LEFT_WING_OCP_THRESHOLD    "LW_OCP_THR"
+#define CFG_LEFT_WING_OCP_COUNT        "LW_OCP_COUNT"
 
 #define CFG_INPUT_ACTIONS       "INPUT_ACTIONS"
 #define CFG_OUTPUT_ACTIONS      "OUTPUT_ACTIONS"

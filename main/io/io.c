@@ -15,14 +15,14 @@
 
 ESP_EVENT_DEFINE_BASE(IO_EVENTS);
 
-static pcnt_unit_handle_t pcnt_unit_m1 = NULL;
-static pcnt_unit_handle_t pcnt_unit_m2 = NULL;
+static pcnt_unit_handle_t pcnt_unit_right_wing = NULL;
+static pcnt_unit_handle_t pcnt_unit_left_wing = NULL;
 
-static pcnt_channel_handle_t pcnt_chan_m1 = NULL;
-static pcnt_channel_handle_t pcnt_chan_m2 = NULL;
+static pcnt_channel_handle_t pcnt_chan_right_wing = NULL;
+static pcnt_channel_handle_t pcnt_chan_left_wing = NULL;
 
-static adc_cali_handle_t adc1_cali_m1_handle = NULL;
-static adc_cali_handle_t adc1_cali_m2_handle = NULL;
+static adc_cali_handle_t adc1_cali_right_wing_handle = NULL;
+static adc_cali_handle_t adc1_cali_left_wing_handle = NULL;
 static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
 static temperature_sensor_handle_t temp_handle = NULL;
@@ -49,7 +49,7 @@ static void IRAM_ATTR input_isr_handler(void* arg) {
 
     static const uint8_t pins[] = {BTN1_PIN, BTN2_PIN, BTN3_PIN, 
                             INPUT1_PIN, INPUT2_PIN, INPUT3_PIN, INPUT4_PIN,
-                            ENDSTOP_M1_A_PIN, ENDSTOP_M1_B_PIN, ENDSTOP_M2_A_PIN, ENDSTOP_M2_B_PIN};
+                            ENDSTOP_RIGHT_WING_A_PIN, ENDSTOP_RIGHT_WING_B_PIN, ENDSTOP_LEFT_WING_A_PIN, ENDSTOP_LEFT_WING_B_PIN};
     static const TickType_t debounce_times[] = {pdMS_TO_TICKS(5000), pdMS_TO_TICKS(5000), pdMS_TO_TICKS(5000), 
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500),
                                         pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500), pdMS_TO_TICKS(500)};
@@ -93,15 +93,15 @@ void io_init_inputs(){
     gpio_config_t endstop_io_conf = {
         .intr_type = GPIO_INTR_NEGEDGE,
         .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = ((1ULL<<ENDSTOP_M1_A_PIN) | (1ULL<<ENDSTOP_M2_A_PIN) | (1ULL<<ENDSTOP_M1_B_PIN) | (1ULL<<ENDSTOP_M2_B_PIN)),
+        .pin_bit_mask = ((1ULL<<ENDSTOP_RIGHT_WING_A_PIN) | (1ULL<<ENDSTOP_LEFT_WING_A_PIN) | (1ULL<<ENDSTOP_RIGHT_WING_B_PIN) | (1ULL<<ENDSTOP_LEFT_WING_B_PIN)),
         .pull_up_en = 0,
         .pull_down_en = 0
     };
     ESP_ERROR_CHECK(gpio_config(&endstop_io_conf));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_A_PIN, input_isr_handler, (void*)ENDSTOP_M1_A_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M1_B_PIN, input_isr_handler, (void*)ENDSTOP_M1_B_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_A_PIN, input_isr_handler, (void*)ENDSTOP_M2_A_PIN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_M2_B_PIN, input_isr_handler, (void*)ENDSTOP_M2_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_RIGHT_WING_A_PIN, input_isr_handler, (void*)ENDSTOP_RIGHT_WING_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_RIGHT_WING_B_PIN, input_isr_handler, (void*)ENDSTOP_RIGHT_WING_B_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_LEFT_WING_A_PIN, input_isr_handler, (void*)ENDSTOP_LEFT_WING_A_PIN));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_LEFT_WING_B_PIN, input_isr_handler, (void*)ENDSTOP_LEFT_WING_B_PIN));
 
     // gpio_config_t rf_config = {
     //     .intr_type = GPIO_INTR_DISABLE,
@@ -118,7 +118,7 @@ void io_init_outputs(){
     gpio_config_t relay_conf = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = ((1ULL<<M1_RLY_A_PIN) | (1ULL<<M1_RLY_B_PIN) | (1ULL<<M2_RLY_A_PIN) | (1ULL<<M2_RLY_B_PIN)) ,
+        .pin_bit_mask = ((1ULL<<RIGHT_WING_RLY_A_PIN) | (1ULL<<RIGHT_WING_RLY_B_PIN) | (1ULL<<LEFT_WING_RLY_A_PIN) | (1ULL<<LEFT_WING_RLY_B_PIN)) ,
         .pull_up_en = 0,
         .pull_down_en = 0
     };
@@ -177,11 +177,11 @@ void io_init_analog(){
     };
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &adc1_handle));
 
-    example_adc_calibration_init(ADC_UNIT_1, M1_SENSE_CHANNEL, ADC_ATTEN, &adc1_cali_m1_handle);
-    example_adc_calibration_init(ADC_UNIT_1, M2_SENSE_CHANNEL, ADC_ATTEN, &adc1_cali_m2_handle);
+    example_adc_calibration_init(ADC_UNIT_1, RIGHT_WING_SENSE_CHANNEL, ADC_ATTEN, &adc1_cali_right_wing_handle);
+    example_adc_calibration_init(ADC_UNIT_1, LEFT_WING_SENSE_CHANNEL, ADC_ATTEN, &adc1_cali_left_wing_handle);
 
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, M1_SENSE_CHANNEL, &config));
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, M2_SENSE_CHANNEL, &config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, RIGHT_WING_SENSE_CHANNEL, &config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, LEFT_WING_SENSE_CHANNEL, &config));
 }
 
 void io_init_pwm(){
@@ -199,7 +199,7 @@ void io_init_pwm(){
         .channel        = LEDC_CHANNEL_0,
         .timer_sel      = LEDC_TIMER_0,
         .intr_type      = LEDC_INTR_DISABLE,
-        .gpio_num       = M1_PWM_PIN,
+        .gpio_num       = RIGHT_WING_PWM_PIN,
         .duty           = 0,
         .hpoint         = 0
     };
@@ -210,7 +210,7 @@ void io_init_pwm(){
         .channel        = LEDC_CHANNEL_1,
         .timer_sel      = LEDC_TIMER_0,
         .intr_type      = LEDC_INTR_DISABLE,
-        .gpio_num       = M2_PWM_PIN,
+        .gpio_num       = LEFT_WING_PWM_PIN,
         .duty           = 0,
         .hpoint         = 0
     };
@@ -219,49 +219,49 @@ void io_init_pwm(){
 }
 
 void io_init_pcnt(){
-    pcnt_unit_config_t unit_config_m1 = {
+    pcnt_unit_config_t unit_config_right_wing = {
         .high_limit = SHRT_MAX,
         .low_limit = SHRT_MIN,
         .intr_priority = 3,
     };
-    pcnt_unit_config_t unit_config_m2 = {
+    pcnt_unit_config_t unit_config_left_wing = {
         .high_limit = SHRT_MAX,
         .low_limit = SHRT_MIN,
         .intr_priority = 3,
     };
-    ESP_ERROR_CHECK(pcnt_new_unit(&unit_config_m1, &pcnt_unit_m1));
-    ESP_ERROR_CHECK(pcnt_new_unit(&unit_config_m2, &pcnt_unit_m2));
+    ESP_ERROR_CHECK(pcnt_new_unit(&unit_config_right_wing, &pcnt_unit_right_wing));
+    ESP_ERROR_CHECK(pcnt_new_unit(&unit_config_left_wing, &pcnt_unit_left_wing));
 
     pcnt_glitch_filter_config_t filter_config = {
         .max_glitch_ns = 1000,
     };
-    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(pcnt_unit_m1, &filter_config));
-    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(pcnt_unit_m2, &filter_config));
+    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(pcnt_unit_right_wing, &filter_config));
+    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(pcnt_unit_left_wing, &filter_config));
 
     pcnt_chan_config_t chan_a_config = {
-        .edge_gpio_num = M1_PULSE_PIN,
+        .edge_gpio_num = RIGHT_WING_PULSE_PIN,
         .level_gpio_num = -1,
     };
-    ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit_m1, &chan_a_config, &pcnt_chan_m1));
+    ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit_right_wing, &chan_a_config, &pcnt_chan_right_wing));
 
     pcnt_chan_config_t chan_b_config = {
-        .edge_gpio_num = M2_PULSE_PIN,
+        .edge_gpio_num = LEFT_WING_PULSE_PIN,
         .level_gpio_num = -1,
     };
-    ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit_m2, &chan_b_config, &pcnt_chan_m2));
+    ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit_left_wing, &chan_b_config, &pcnt_chan_left_wing));
 
-    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_m1, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
-    ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_m1, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
-    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_m2, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
-    ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_m2, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
+    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_right_wing, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
+    ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_right_wing, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
+    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_left_wing, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
+    ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_left_wing, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
 
-    ESP_ERROR_CHECK(pcnt_unit_enable(pcnt_unit_m1));
-    ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit_m1));
-    ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_m1));
+    ESP_ERROR_CHECK(pcnt_unit_enable(pcnt_unit_right_wing));
+    ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit_right_wing));
+    ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_right_wing));
 
-    ESP_ERROR_CHECK(pcnt_unit_enable(pcnt_unit_m2));
-    ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit_m2));
-    ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_m2));
+    ESP_ERROR_CHECK(pcnt_unit_enable(pcnt_unit_left_wing));
+    ESP_ERROR_CHECK(pcnt_unit_clear_count(pcnt_unit_left_wing));
+    ESP_ERROR_CHECK(pcnt_unit_start(pcnt_unit_left_wing));
 }
 
 void io_init_temp_sensor(){
@@ -275,24 +275,24 @@ void io_init_temp_sensor(){
 
 
 
-void io_motor_dir(motor_id_t id, uint8_t clockwise) {
+void io_wing_dir(wing_id_t id, uint8_t clockwise) {
     pcnt_channel_handle_t pcnt_channel;
     gpio_num_t relay_pin_a, relay_pin_b;
-    uint8_t motor_dir;
+    uint8_t wing_dir;
 
-    if(M1 == id){
-        pcnt_channel = pcnt_chan_m1;
-        relay_pin_a = M1_RLY_A_PIN;
-        relay_pin_b = M1_RLY_B_PIN;
-        motor_dir = device_config.m1_dir;
+    if(RIGHT_WING == id){
+        pcnt_channel = pcnt_chan_right_wing;
+        relay_pin_a = RIGHT_WING_RLY_A_PIN;
+        relay_pin_b = RIGHT_WING_RLY_B_PIN;
+        wing_dir = device_config.right_wing_dir;
     } else {
-        pcnt_channel = pcnt_chan_m2;
-        relay_pin_a = M2_RLY_A_PIN;
-        relay_pin_b = M2_RLY_B_PIN;
-        motor_dir = device_config.m2_dir;
+        pcnt_channel = pcnt_chan_left_wing;
+        relay_pin_a = LEFT_WING_RLY_A_PIN;
+        relay_pin_b = LEFT_WING_RLY_B_PIN;
+        wing_dir = device_config.left_wing_dir;
     }
 
-    if (motor_dir == clockwise) {
+    if (wing_dir == clockwise) {
         ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_channel, PCNT_CHANNEL_LEVEL_ACTION_INVERSE, PCNT_CHANNEL_LEVEL_ACTION_KEEP));
         gpio_set_level(relay_pin_a, 1);
         gpio_set_level(relay_pin_b, 0);
@@ -303,25 +303,25 @@ void io_motor_dir(motor_id_t id, uint8_t clockwise) {
     }
 }
 
-void io_motor_stop(motor_id_t id){
-    if(M1 == id){
+void io_wing_stop(wing_id_t id){
+    if(RIGHT_WING == id){
         ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-        io_motor_pwm(id, 0);
-        gpio_set_level(M1_RLY_A_PIN, 0);
-        gpio_set_level(M1_RLY_B_PIN, 0);
+        io_wing_pwm(id, 0);
+        gpio_set_level(RIGHT_WING_RLY_A_PIN, 0);
+        gpio_set_level(RIGHT_WING_RLY_B_PIN, 0);
     }
     else{
         ledc_fade_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
-        io_motor_pwm(id, 0);
-        gpio_set_level(M2_RLY_A_PIN, 0);
-        gpio_set_level(M2_RLY_B_PIN, 0);
+        io_wing_pwm(id, 0);
+        gpio_set_level(LEFT_WING_RLY_A_PIN, 0);
+        gpio_set_level(LEFT_WING_RLY_B_PIN, 0);
     }
 
 }
 
-void io_motor_pwm(motor_id_t id, uint32_t freq){
+void io_wing_pwm(wing_id_t id, uint32_t freq){
     uint32_t frequency = freq>PWM_LIMIT?PWM_LIMIT:freq;
-    if(M1 == id){
+    if(RIGHT_WING == id){
         ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, frequency);
         ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
     }
@@ -332,8 +332,8 @@ void io_motor_pwm(motor_id_t id, uint32_t freq){
 
 }
 
-void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time){
-    if(M1 == id){
+void io_wing_fade(wing_id_t id, uint32_t target, uint32_t time){
+    if(RIGHT_WING == id){
         ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, target, time);
         ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
     }
@@ -344,22 +344,22 @@ void io_motor_fade(motor_id_t id, uint32_t target, uint32_t time){
 
 }
 
-int32_t io_motor_get_pcnt(motor_id_t id){
+int32_t io_wing_get_pcnt(wing_id_t id){
     int value = 0;
-    if(M1 == id){
-        pcnt_unit_get_count(pcnt_unit_m1, &value);
+    if(RIGHT_WING == id){
+        pcnt_unit_get_count(pcnt_unit_right_wing, &value);
     }
     else{
-        pcnt_unit_get_count(pcnt_unit_m2, &value);
+        pcnt_unit_get_count(pcnt_unit_left_wing, &value);
     }
     return value;
 }
 
-uint16_t io_motor_get_current(motor_id_t id){
+uint16_t io_wing_get_current(wing_id_t id){
     int adc_value = 0;
     int voltage_value = 0;
-    adc_oneshot_read(adc1_handle, (M1 == id) ? M1_SENSE_CHANNEL : M2_SENSE_CHANNEL, &adc_value);
-    adc_cali_raw_to_voltage((M1 == id) ? adc1_cali_m1_handle : adc1_cali_m2_handle, adc_value, &voltage_value);
+    adc_oneshot_read(adc1_handle, (RIGHT_WING == id) ? RIGHT_WING_SENSE_CHANNEL : LEFT_WING_SENSE_CHANNEL, &adc_value);
+    adc_cali_raw_to_voltage((RIGHT_WING == id) ? adc1_cali_right_wing_handle : adc1_cali_left_wing_handle, adc_value, &voltage_value);
     float current = (((float)voltage_value)/OP_AMP_GAIN) / (SHUNT_VALUE); 
     return (uint16_t)(current * 1000);
 }

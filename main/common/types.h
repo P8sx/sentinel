@@ -5,27 +5,27 @@
 #include "stdatomic.h"
 #include "stdbool.h"
 
-#define GATE_CMD(cmd_action, cmd_id) (gate_command_t){ .action = cmd_action, .id = cmd_id }
+#define WING_CMD(cmd_action, cmd_id) (wing_command_t){ .action = cmd_action, .id = cmd_id }
 #define STATE_STRING(num)  ((const char *[]){"OPENED","OPENING","CLOSED","CLOSING","STOPPED_OPENING","STOPPED_CLOSING", "UNKNOWN"}[(num%8)])
 #define STATE_STRING_NORMALIZED(num)  ((const char *[]){"Opened","Opening","Closed","Closing","Stopped","Stopped", "Unknown"}[(num%8)])
-#define INPUT_ACTION_TO_GATE_COMMAND(inputAction)  ((gate_command_t) { .id = (motor_id_t)(inputAction & 0x0F), .action = (gate_action_t)(inputAction & 0xF0)})
+#define INPUT_ACTION_TO_GATE_COMMAND(inputAction)  ((wing_command_t) { .id = (wing_id_t)(inputAction & 0x0F), .action = (wing_action_t)(inputAction & 0xF0)})
 
 
-typedef enum motor_id_t {
-    M1      = 0x01,
-    M2      = 0x02,
-    M1M2    = 0x03,
-} motor_id_t;
+typedef enum wing_id_t {
+    RIGHT_WING      = 0x01,
+    LEFT_WING       = 0x02,
+    BOTH_WING       = 0x03,
+} wing_id_t;
 
-typedef enum gate_action_t {
+typedef enum wing_action_t {
     OPEN        = 0x10,
     CLOSE       = 0x20,
     STOP        = 0x30,
     NEXT_STATE  = 0x40,
     HW_STOP     = 0x50,
-} gate_action_t;
+} wing_action_t;
 
-typedef enum gate_state_t {
+typedef enum wing_state_t {
     OPENED,
     OPENING,
     CLOSED,
@@ -33,44 +33,44 @@ typedef enum gate_state_t {
     STOPPED_OPENING,
     STOPPED_CLOSING,
     UNKNOWN,
-} gate_state_t;
+} wing_state_t;
 
 
-typedef struct gate_status_t{
-    motor_id_t id;
-    gate_state_t state;
-} gate_status_t;
+typedef struct wing_info_t{
+    wing_id_t id;
+    wing_state_t state;
+} wing_info_t;
 
-typedef struct gate_command_t{
-    motor_id_t id;
-    gate_action_t action;
-} gate_command_t;
+typedef struct wing_command_t{
+    wing_id_t id;
+    wing_action_t action;
+} wing_command_t;
 
 
 
 typedef enum input_action_t {
-    M1_OPEN             = M1 | OPEN,
-    M2_OPEN             = M2 | OPEN,
-    M1M2_OPEN           = M1M2 | OPEN,
-    M1_CLOSE            = M1 | CLOSE,
-    M2_CLOSE            = M2 | CLOSE,
-    M1M2_CLOSE          = M1M2 | CLOSE,
-    M1_STOP             = M1 | STOP,
-    M2_STOP             = M2 | STOP,
-    M1M2_STOP           = M1M2 | STOP,
-    M1_NEXT_STATE       = M1 | NEXT_STATE,
-    M2_NEXT_STATE       = M2 | NEXT_STATE,
-    M1M2_NEXT_STATE     = M1M2 | NEXT_STATE,
-    UNKNOWN_ACTION      = 0xFF,
+    RIGHT_WING_OPEN         = RIGHT_WING    | OPEN,
+    LEFT_WING_OPEN          = LEFT_WING     | OPEN,
+    BOTH_WING_OPEN          = BOTH_WING     | OPEN,
+    RIGHT_WING_CLOSE        = RIGHT_WING    | CLOSE,
+    LEFT_WING_CLOSE         = LEFT_WING     | CLOSE,
+    BOTH_WING_CLOSE         = BOTH_WING     | CLOSE,
+    RIGHT_WING_STOP         = RIGHT_WING    | STOP,
+    LEFT_WING_STOP          = LEFT_WING     | STOP,
+    BOTH_WING_STOP          = BOTH_WING     | STOP,
+    RIGHT_WING_NEXT_STATE   = RIGHT_WING    | NEXT_STATE,
+    LEFT_WING_NEXT_STATE    = LEFT_WING     | NEXT_STATE,
+    BOTH_WING_NEXT_STATE    = BOTH_WING     | NEXT_STATE,
+    UNKNOWN_ACTION          = 0xFF,
 } input_action_t;
 
 typedef enum output_action_t{
-    M1_MOVING_BLINK,
-    M2_MOVING_BLINK,
-    M1M2_MOVING_BLINK,
-    M1_MOVING_ON,
-    M2_MOVING_ON,
-    M1M2_MOVING_ON,
+    RIGHT_WING_MOVING_BLINK,
+    LEFT_WING_MOVING_BLINK,
+    BOTH_WING_MOVING_BLINK,
+    RIGHT_WING_MOVING_ON,
+    LEFT_WING_MOVING_ON,
+    BOTH_WING_MOVING_ON,
 } output_action_t;
 
 typedef struct device_config_t{
@@ -85,13 +85,13 @@ typedef struct device_config_t{
     
     uint32_t mqtt_port;
 
-    bool m1_dir;
-    bool m2_dir;
+    bool right_wing_dir;
+    bool left_wing_dir;
 
-    uint16_t m1_ocp_threshold;
-    uint16_t m2_ocp_threshold;
-    uint16_t m1_ocp_count;
-    uint16_t m2_ocp_count;
+    uint16_t right_wing_ocp_threshold;
+    uint16_t left_wing_ocp_threshold;
+    uint16_t right_wing_ocp_count;
+    uint16_t left_wing_ocp_count;
 
     uint8_t input_actions[4];
     uint8_t output_actions[2];
