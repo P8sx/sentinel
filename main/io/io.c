@@ -12,6 +12,7 @@
 #include "driver/temperature_sensor.h"
 #include "esp_log.h"
 #include "gate.h"
+#include "esp_timer.h"
 
 ESP_EVENT_DEFINE_BASE(IO_EVENTS);
 
@@ -67,6 +68,85 @@ static void IRAM_ATTR input_isr_handler(void *arg)
     }
 }
 
+static void IRAM_ATTR rf_isr_handler(void *arg)
+{
+    static volatile uint64_t last_change = 0;
+    static volatile uint8_t preamble_count = 0;
+    static volatile uint8_t bit_counter;
+    static volatile uint8_t bit_array[66];
+    volatile uint64_t cur_timestamp = esp_timer_get_time();
+    volatile uint8_t cur_status = gpio_get_level(RF_RECEIVER_PIN);
+    volatile uint32_t pulse_duration = cur_timestamp - last_change;
+    
+    last_change = cur_timestamp;
+    
+#define PULSE_BETWEEN(x,y) (pulse_duration > x && pulse_duration < y)
+
+    if (preamble_count < 12)
+    {
+        if (cur_status == 1)
+        {
+            if (!(PULSE_BETWEEN(150,500) || preamble_count == 0))
+            {
+                preamble_count = 0;
+                return;
+            }
+        }
+        else
+        {
+
+            if (PULSE_BETWEEN(300,600))
+            {
+                preamble_count++;
+                if (preamble_count == 12)
+                {
+                    bit_counter = 0;
+                    return;
+                }
+            }
+            else
+            {
+                preamble_count = 0;
+                return;
+            }
+        }
+    }
+
+    if (12 == preamble_count)
+    {
+        if (1 == cur_status && !(PULSE_BETWEEN(250,900) || 0 == bit_counter))
+        {
+            preamble_count = 0;
+            return;
+        }
+        else if(0 == cur_status)
+        {
+
+            if (PULSE_BETWEEN(250,900))
+            {
+                bit_array[65 - bit_counter] = (pulse_duration > 600) ? 0 : 1;
+                bit_counter++;
+                if (bit_counter == 66)
+                {
+                    preamble_count = 0;
+                    uint64_t serial_num = 0;
+                    for (int i = 2; i < 34; i++)
+                    {
+                        serial_num = (serial_num << 1) + bit_array[i];
+                    };
+                    ESP_DRAM_LOGI("RF", "%08X", serial_num);
+                    esp_event_isr_post(IO_EVENTS, IO_RF_EVENT, serial_num, sizeof(uint64_t), NULL);
+                }
+            }
+            else
+            {
+                preamble_count = 0;
+            }
+        }
+    }
+}
+
+
 void io_init_inputs()
 {
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
@@ -105,14 +185,16 @@ void io_init_inputs()
     ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_LEFT_WING_A_PIN, input_isr_handler, (void *)ENDSTOP_LEFT_WING_A_PIN));
     ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_LEFT_WING_B_PIN, input_isr_handler, (void *)ENDSTOP_LEFT_WING_B_PIN));
 
-    // gpio_config_t rf_config = {
-    //     .intr_type = GPIO_INTR_DISABLE,
-    //     .mode = GPIO_MODE_INPUT,
-    //     .pin_bit_mask = (1ULL<<RF_RECEIVER_PIN),
-    //     .pull_up_en = GPIO_PULLUP_DISABLE,
-    //     .pull_down_en = GPIO_PULLDOWN_DISABLE
-    // };
-    // ESP_ERROR_CHECK(gpio_config(&rf_config));
+    gpio_config_t rf_config = {
+        .intr_type = GPIO_INTR_ANYEDGE,
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = (1ULL<<RF_RECEIVER_PIN),
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE
+    };
+    ESP_ERROR_CHECK(gpio_isr_handler_add(RF_RECEIVER_PIN, rf_isr_handler, NULL));
+
+    ESP_ERROR_CHECK(gpio_config(&rf_config));
 }
 
 void io_init_outputs()

@@ -6,7 +6,6 @@
 #include "io/gate.h"
 #include "io/io.h"
 #include "io/ui_handler.h"
-#include "wireless/rf.h"
 #include "wireless/wifi.h"
 #include <stdio.h>
 
@@ -55,10 +54,9 @@ void app_main(void)
     {
         ui_handler_init();
         xTaskCreatePinnedToCore(ui_button_handling_task, "button_task", 4096, NULL, configMAX_PRIORITIES - 6, &ui_handler_button_task_handle, APP_CPU_NUM);
-        xTaskCreatePinnedToCore(ui_oled_display_task, "display_task", 8192, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_display_task_handle, APP_CPU_NUM);
+        xTaskCreatePinnedToCore(ui_oled_display_task, "display_task", 16384, NULL, configMAX_PRIORITIES - 6, &ui_handler_oled_display_task_handle, APP_CPU_NUM);
     }
 
-    rf433_init();
     ghota_config_init();
     mqtt_config_init();
 

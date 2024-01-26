@@ -51,7 +51,8 @@
         "stdint.h": "c",
         "stdbool.h": "c",
         "cstring": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "sstream": "c"
     },
     "idf.flashType": "JTAG",
     "idf.port": "/dev/ttyACM1"

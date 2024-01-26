@@ -146,11 +146,11 @@ void i2c_oled_home_screen(uint8_t screen_saver_time, float soc_temp, bool wifi_s
 	u8g2_DrawXBMP(&u8g2, 2, 1, 12, 12, wifi_status ? image_wifi_12x12_bits : image_no_wifi_12x12_bits);
 	u8g2_DrawLine(&u8g2, 0, 13, 127, 13);
 
-	uint8_t right_wing_str_len = u8g2_GetStrWidth(&u8g2, STATE_STRING_NORMALIZED(right_wing_state));
-	uint8_t left_wing_str_len = u8g2_GetStrWidth(&u8g2, STATE_STRING_NORMALIZED(left_wing_state));
+	uint8_t right_wing_str_len = u8g2_GetStrWidth(&u8g2, STATE_TO_STRING_NORMALIZED(right_wing_state));
+	uint8_t left_wing_str_len = u8g2_GetStrWidth(&u8g2, STATE_TO_STRING_NORMALIZED(left_wing_state));
 
-	u8g2_DrawStr(&u8g2, 32 - (right_wing_str_len / 2), 27, STATE_STRING_NORMALIZED(right_wing_state));
-	u8g2_DrawStr(&u8g2, 96 - (left_wing_str_len / 2), 27, STATE_STRING_NORMALIZED(left_wing_state));
+	u8g2_DrawStr(&u8g2, 32 - (right_wing_str_len / 2), 27, STATE_TO_STRING_NORMALIZED(right_wing_state));
+	u8g2_DrawStr(&u8g2, 96 - (left_wing_str_len / 2), 27, STATE_TO_STRING_NORMALIZED(left_wing_state));
 
 	switch (right_wing_state)
 	{

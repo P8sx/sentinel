@@ -17,8 +17,8 @@ device_config_t device_config = {
     .left_wing_ocp_threshold = 1200,
     .right_wing_ocp_count = 150,
     .left_wing_ocp_count = 150,
-    .input_actions = {BOTH_WING_NEXT_STATE, UNKNOWN_ACTION, UNKNOWN_ACTION, UNKNOWN_ACTION},
-    .output_actions = {BOTH_WING_MOVING_ON, BOTH_WING_MOVING_BLINK},
+    .input_actions = {BOTH_WING_NEXT_STATE, INPUT_UNKNOWN_ACTION, INPUT_UNKNOWN_ACTION, INPUT_UNKNOWN_ACTION},
+    .output_actions = {ANY_WING_ON, ANY_WING_BLINK},
 };
 
 void load_config_value(nvs_handle_t nvs_handle, const char *key, void *value, size_t size, void *default_value)
@@ -57,7 +57,7 @@ void config_load()
         .right_wing_ocp_count = 150,
         .left_wing_ocp_count = 150,
         .input_actions = {BOTH_WING_NEXT_STATE, RIGHT_WING_STOP, LEFT_WING_STOP, BOTH_WING_STOP},
-        .output_actions = {BOTH_WING_MOVING_ON, BOTH_WING_MOVING_BLINK},
+        .output_actions = {ANY_WING_ON, ANY_WING_BLINK},
         .mqtt_uri = "",
         .mqtt_username = "",
         .mqtt_password = "",
@@ -110,6 +110,40 @@ void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_thres
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_DIR : CFG_LEFT_WING_DIR, &dir, sizeof(dir));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_THRESHOLD : CFG_LEFT_WING_OCP_THRESHOLD, &ocp_threshold, sizeof(ocp_threshold));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_COUNT : CFG_LEFT_WING_OCP_COUNT, &ocp_count, sizeof(ocp_count));
+
+    ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+    nvs_close(nvs_handle);
+
+    ESP_LOGI(CFG_LOG_TAG, "Config updated");
+}
+
+void config_update_input_settings(input_action_t in1, input_action_t in2, input_action_t in3, input_action_t in4)
+{
+    ESP_LOGI(CFG_LOG_TAG, "Config update start");
+    nvs_handle_t nvs_handle;
+    ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext", CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
+
+    device_config.input_actions[0] = in1;
+    device_config.input_actions[1] = in2;
+    device_config.input_actions[2] = in3;
+    device_config.input_actions[3] = in4;
+    save_config_value(nvs_handle, CFG_INPUT_ACTIONS, &device_config.input_actions, sizeof(device_config.input_actions));
+
+    ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+    nvs_close(nvs_handle);
+
+    ESP_LOGI(CFG_LOG_TAG, "Config updated");
+}
+
+void config_update_output_settings(output_action_t out1, output_action_t out2)
+{
+    ESP_LOGI(CFG_LOG_TAG, "Config update start");
+    nvs_handle_t nvs_handle;
+    ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext", CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
+
+    device_config.output_actions[0] = out1;
+    device_config.output_actions[1] = out2; 
+    save_config_value(nvs_handle, CFG_OUTPUT_ACTIONS, &device_config.output_actions, sizeof(device_config.output_actions));
 
     ESP_ERROR_CHECK(nvs_commit(nvs_handle));
     nvs_close(nvs_handle);

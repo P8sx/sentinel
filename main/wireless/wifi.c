@@ -368,7 +368,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(MQTT_LOG_TAG, "MQTT_EVENT_CONNECTED");
-
         /* Publish cover configuration */
         snprintf(config_topic, sizeof(config_topic), "homeassistant/cover/%s/left-wing/config", device_config.device_name);
         mqtt_cover_config(config, MQTT_CFG_SIZE, "Left wing", device_config.device_name, "left-wing", mqtt_availability_topic, mqtt_left_wing_state_topic, mqtt_left_wing_cmd_topic);
@@ -582,7 +581,7 @@ static void tcp_receive_handle(const int sock)
                 wing_state_t right_wing = wing_get_state(RIGHT_WING);
                 wing_state_t left_wing = wing_get_state(LEFT_WING);
 
-                snprintf(tx_buffer, 128, "RIGHT_WING:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, LEFT_WING:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n", STATE_STRING(right_wing), (int)io_wing_get_pcnt(RIGHT_WING), (int)io_wing_get_current(RIGHT_WING), (int)wing_get_open_pcnt(RIGHT_WING), (int)wing_get_close_pcnt(RIGHT_WING), STATE_STRING(left_wing), (int)io_wing_get_pcnt(LEFT_WING), (int)io_wing_get_current(LEFT_WING), (int)wing_get_open_pcnt(LEFT_WING), (int)wing_get_close_pcnt(LEFT_WING));
+                snprintf(tx_buffer, 128, "RIGHT_WING:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i, LEFT_WING:%s PCNT:%i ANALOG %i, OPCNT:%i CPCNT:%i\n", STATE_TO_STRING(right_wing), (int)io_wing_get_pcnt(RIGHT_WING), (int)io_wing_get_current(RIGHT_WING), (int)wing_get_open_pcnt(RIGHT_WING), (int)wing_get_close_pcnt(RIGHT_WING), STATE_TO_STRING(left_wing), (int)io_wing_get_pcnt(LEFT_WING), (int)io_wing_get_current(LEFT_WING), (int)wing_get_open_pcnt(LEFT_WING), (int)wing_get_close_pcnt(LEFT_WING));
             }
             else if (strcmp(rx_buffer, "partition") == 0)
             {

@@ -33,7 +33,7 @@ struct input_lookup_table_t
     {RIGHT_WING_NEXT_STATE, io_handler_wing_action_handle},
     {LEFT_WING_NEXT_STATE, io_handler_wing_action_handle},
     {BOTH_WING_NEXT_STATE, io_handler_wing_action_handle},
-    {UNKNOWN_ACTION, io_handler_wing_action_unknown_handle}
+    {INPUT_UNKNOWN_ACTION, io_handler_wing_action_unknown_handle}
     /* More input actions */
 };
 
@@ -42,12 +42,13 @@ struct output_lookup_table_t
     enum output_action_t action;
     void (*func)(void *);
 } output_lookup_table[] = {
-    {RIGHT_WING_MOVING_BLINK, io_handler_wing_action_unknown_handle},
-    {LEFT_WING_MOVING_BLINK, io_handler_wing_action_unknown_handle},
-    {BOTH_WING_MOVING_BLINK, io_handler_wing_action_unknown_handle},
-    {RIGHT_WING_MOVING_ON, io_handler_wing_action_unknown_handle},
-    {LEFT_WING_MOVING_ON, io_handler_wing_action_unknown_handle},
-    {BOTH_WING_MOVING_ON, io_handler_wing_action_unknown_handle},
+    {RIGHT_WING_BLINK, io_handler_wing_action_unknown_handle},
+    {LEFT_WING_BLINK, io_handler_wing_action_unknown_handle},
+    {ANY_WING_BLINK, io_handler_wing_action_unknown_handle},
+    {RIGHT_WING_ON, io_handler_wing_action_unknown_handle},
+    {LEFT_WING_ON, io_handler_wing_action_unknown_handle},
+    {ANY_WING_ON, io_handler_wing_action_unknown_handle},
+    {INPUT_UNKNOWN_ACTION, io_handler_wing_action_unknown_handle}
     /* More output actions */
 };
 
@@ -55,7 +56,36 @@ static void io_handler_wing_event_handler(void *arg, esp_event_base_t event_base
 {
     if (WING_STATUS_CHANGED == event_id)
     {
-        // wing_info_t *status = (wing_info_t *)event_data;
+        wing_info_t wing_status = *(wing_info_t *)event_data;
+        if(RIGHT_WING == wing_status.id){
+            switch (wing_status.state)
+            {
+            case OPENING:
+            case CLOSING:
+                for (size_t i = 0; i < sizeof(output_lookup_table) / sizeof(output_lookup_table[0]); ++i)
+                {
+                    if (output_lookup_table[i].action == device_config.output_actions[0])
+                    {
+                        output_lookup_table[i].func(&wing_status);
+                        break;
+                    }
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        else{
+            switch (wing_status.state)
+            {
+            case OPENING:
+            case CLOSING:
+                /* code */
+                break;
+            default:
+                break;
+            }
+        }
     }
 }
 
@@ -88,11 +118,11 @@ static void io_handler_io_event_handler(void *arg, esp_event_base_t event_base, 
             break;
         case ENDSTOP_RIGHT_WING_A_PIN:
         case ENDSTOP_RIGHT_WING_B_PIN:
-            xQueueSend(wing_action_queue, &WING_CMD(HW_STOP, RIGHT_WING), pdMS_TO_TICKS(100));
+            xQueueSendToFront(wing_action_queue, &WING_CMD(HW_STOP, RIGHT_WING), pdMS_TO_TICKS(100));
             break;
         case ENDSTOP_LEFT_WING_A_PIN:
         case ENDSTOP_LEFT_WING_B_PIN:
-            xQueueSend(wing_action_queue, &WING_CMD(HW_STOP, LEFT_WING), pdMS_TO_TICKS(100));
+            xQueueSendToFront(wing_action_queue, &WING_CMD(HW_STOP, LEFT_WING), pdMS_TO_TICKS(100));
             break;
         }
     }

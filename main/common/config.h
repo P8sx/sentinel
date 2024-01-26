@@ -7,6 +7,8 @@
 extern device_config_t device_config;
 void config_load();
 void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
+void config_update_input_settings(input_action_t in1, input_action_t in2, input_action_t in3, input_action_t in4);
+void config_update_output_settings(output_action_t out1, output_action_t out2);
 
 #define HW_VERSION                          "v1.0"
 
