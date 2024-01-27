@@ -17,17 +17,17 @@
 
 ESP_EVENT_DEFINE_BASE(UI_EVENTS);
 
-static TimerHandle_t ui_screen_saver_timer_handle = NULL;
 static atomic_uint_fast16_t ui_screen_menu = SCREEN_WELCOME;
-
+static TimerHandle_t ui_screen_saver_timer_handle = NULL;
 static SemaphoreHandle_t ui_task_mutex = NULL;
+static QueueHandle_t button_queue = NULL;
 
 extern TaskHandle_t ui_handler_button_task_handle;
 extern TaskHandle_t ui_handler_oled_display_task_handle;
-
 extern QueueHandle_t wing_action_queue;
 
-static QueueHandle_t button_queue = NULL;
+SemaphoreHandle_t rf_learning_semaphore_mutex = NULL;
+QueueHandle_t rf_learning_queue = NULL;
 
 #define RECEIVE_FROM_BTN_QUEUE(button) xQueueReceive(button_queue, &button, pdMS_TO_TICKS(60000))
 
@@ -100,16 +100,23 @@ void ui_handler_init()
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IO_EVENTS, ESP_EVENT_ANY_ID, &ui_event_handler, NULL, NULL));
 
     button_queue = xQueueCreate(5, sizeof(button_event_t));
+
+    if (HW_CHECK_RF_ENABLED())
+    {
+        rf_learning_semaphore_mutex = xSemaphoreCreateBinary();
+        xSemaphoreGive(rf_learning_semaphore_mutex);
+        rf_learning_queue = xQueueCreate(3, sizeof(uint64_t));
+    }
 }
 
 // NEED MAJOR REFACTOR #spaghetti code
-menu_return_result_e ui_menu_configuration_wing_submenu(wing_id_t wing_id)
+menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
 {
     const uint8_t menu_options = 3;
     uint8_t pos = 0;
     button_event_t btn;
     char option_labels[3][30];
-    const char *menu_label = (wing_id == RIGHT_WING) ? "Configuration-> Right wing" : "Configuration-> Left wing";
+    const char *menu_label = (wing_id == RIGHT_WING) ? "Config-> Right wing" : "Config-> Left wing";
 
     float ocp_threshold;
     uint16_t ocp_count;
@@ -209,7 +216,7 @@ menu_return_result_e ui_menu_configuration_wing_submenu(wing_id_t wing_id)
                 break;
             }
             config_update_wing_settings(wing_id, direction, ocp_threshold * 1000, ocp_count);
-            io_buzzer(3,20,20);
+            io_buzzer(3, 20, 20);
         }
         if (btn.event == BUTTON_RELESED)
             i2c_oled_menu(menu_label, pos, menu_options, option_labels[0], option_labels[1], option_labels[2]);
@@ -217,7 +224,8 @@ menu_return_result_e ui_menu_configuration_wing_submenu(wing_id_t wing_id)
     return TIMER_RETURN;
 }
 
-menu_return_result_e ui_menu_configuration_input_submenu(){
+menu_return_result_e ui_menu_config_input_submenu()
+{
     const uint8_t menu_options = 4;
     uint8_t pos = 0;
     button_event_t btn;
@@ -225,12 +233,10 @@ menu_return_result_e ui_menu_configuration_input_submenu(){
     uint8_t current_actions[4] = {device_config.input_actions[0], device_config.input_actions[1], device_config.input_actions[2], device_config.input_actions[3]};
     char option_labels[4][30];
 
-
-    snprintf(option_labels[0], sizeof(option_labels[0]), "IN1 = %s",INPUT_ACTION_TO_STRING(current_actions[0]));
-    snprintf(option_labels[1], sizeof(option_labels[0]), "IN2 = %s",INPUT_ACTION_TO_STRING(current_actions[1]));
-    snprintf(option_labels[2], sizeof(option_labels[0]), "IN3 = %s",INPUT_ACTION_TO_STRING(current_actions[2]));
-    snprintf(option_labels[3], sizeof(option_labels[0]), "IN4 = %s",INPUT_ACTION_TO_STRING(current_actions[3]));
-
+    snprintf(option_labels[0], sizeof(option_labels[0]), "IN1 = %s", INPUT_ACTION_TO_STRING(current_actions[0]));
+    snprintf(option_labels[1], sizeof(option_labels[0]), "IN2 = %s", INPUT_ACTION_TO_STRING(current_actions[1]));
+    snprintf(option_labels[2], sizeof(option_labels[0]), "IN3 = %s", INPUT_ACTION_TO_STRING(current_actions[2]));
+    snprintf(option_labels[3], sizeof(option_labels[0]), "IN4 = %s", INPUT_ACTION_TO_STRING(current_actions[3]));
 
     while (RECEIVE_FROM_BTN_QUEUE(btn))
     {
@@ -240,11 +246,11 @@ menu_return_result_e ui_menu_configuration_input_submenu(){
             pos = pos > 0 ? pos - 1 : pos;
         else if (IS_BTN_PRESSED(btn, BTN2_PIN))
         {
-            if(0 == pos) 
+            if (0 == pos)
                 return USER_RETURN;
-            uint8_t in_sel = pos -1;
+            uint8_t in_sel = pos - 1;
 
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i -> %s", in_sel+1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
+            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i -> %s", in_sel + 1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
             while (RECEIVE_FROM_BTN_QUEUE(btn))
             {
                 if (IS_BTN_PRESSED(btn, BTN1_PIN))
@@ -254,22 +260,23 @@ menu_return_result_e ui_menu_configuration_input_submenu(){
                 else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                     break;
 
-                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i -> %s", in_sel+1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
+                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i -> %s", in_sel + 1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
                 if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
-                    i2c_oled_menu("Configuration->Input", pos, menu_options, option_labels[0], option_labels[1], option_labels[2], option_labels[3]);
+                    i2c_oled_menu("Config->Input", pos, menu_options, option_labels[0], option_labels[1], option_labels[2], option_labels[3]);
             }
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i = %s", in_sel+1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
+            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i = %s", in_sel + 1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
 
             config_update_input_settings(current_actions[0], current_actions[1], current_actions[2], current_actions[3]);
-            io_buzzer(3,20,20);
+            io_buzzer(3, 20, 20);
         }
         if (btn.event == BUTTON_RELESED)
-            i2c_oled_menu("Configuration->Input", pos, menu_options, option_labels[0], option_labels[1], option_labels[2], option_labels[3]);
+            i2c_oled_menu("Config->Input", pos, menu_options, option_labels[0], option_labels[1], option_labels[2], option_labels[3]);
     }
     return TIMER_RETURN;
 }
 
-menu_return_result_e ui_menu_configuration_output_submenu(){
+menu_return_result_e ui_menu_config_output_submenu()
+{
     const uint8_t menu_options = 2;
     uint8_t pos = 0;
     button_event_t btn;
@@ -277,10 +284,8 @@ menu_return_result_e ui_menu_configuration_output_submenu(){
     uint8_t current_actions[2] = {device_config.output_actions[0], device_config.output_actions[1]};
     char option_labels[2][40];
 
-
-    snprintf(option_labels[0], sizeof(option_labels[0]), "OUT1 = %s",OUTPUT_ACTION_TO_STRING(current_actions[0]));
-    snprintf(option_labels[1], sizeof(option_labels[0]), "OUT2 = %s",OUTPUT_ACTION_TO_STRING(current_actions[1]));
-
+    snprintf(option_labels[0], sizeof(option_labels[0]), "OUT1 = %s", OUTPUT_ACTION_TO_STRING(current_actions[0]));
+    snprintf(option_labels[1], sizeof(option_labels[0]), "OUT2 = %s", OUTPUT_ACTION_TO_STRING(current_actions[1]));
 
     while (RECEIVE_FROM_BTN_QUEUE(btn))
     {
@@ -290,11 +295,11 @@ menu_return_result_e ui_menu_configuration_output_submenu(){
             pos = pos > 0 ? pos - 1 : pos;
         else if (IS_BTN_PRESSED(btn, BTN2_PIN))
         {
-            if(0 == pos) 
+            if (0 == pos)
                 return USER_RETURN;
-            uint8_t in_sel = pos -1;
+            uint8_t in_sel = pos - 1;
 
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i -> %s", in_sel+1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
+            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i -> %s", in_sel + 1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
             while (RECEIVE_FROM_BTN_QUEUE(btn))
             {
                 if (IS_BTN_PRESSED(btn, BTN1_PIN))
@@ -304,23 +309,24 @@ menu_return_result_e ui_menu_configuration_output_submenu(){
                 else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                     break;
 
-                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i -> %s", in_sel+1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
+                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i -> %s", in_sel + 1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
                 if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
-                    i2c_oled_menu("Configuration->Output", pos, menu_options, option_labels[0], option_labels[1]);
+                    i2c_oled_menu("Config->Output", pos, menu_options, option_labels[0], option_labels[1]);
             }
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i = %s", in_sel+1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
+            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i = %s", in_sel + 1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
 
             config_update_output_settings(current_actions[0], current_actions[1]);
-            io_buzzer(3,20,20);
+            io_buzzer(3, 20, 20);
         }
         if (btn.event == BUTTON_RELESED)
-            i2c_oled_menu("Configuration->Output", pos, menu_options, option_labels[0], option_labels[1]);
+            i2c_oled_menu("Config->Output", pos, menu_options, option_labels[0], option_labels[1]);
     }
     return TIMER_RETURN;
 }
-menu_return_result_e ui_menu_configuration_menu()
+
+menu_return_result_e ui_menu_config_rf_submenu()
 {
-    const uint8_t menu_options = 4;
+    const uint8_t menu_options = 2;
     uint8_t pos = 0;
     button_event_t btn;
     while (RECEIVE_FROM_BTN_QUEUE(btn))
@@ -338,16 +344,175 @@ menu_return_result_e ui_menu_configuration_menu()
                 return USER_RETURN;
                 break;
             case 1:
-                return_result = ui_menu_configuration_wing_submenu(RIGHT_WING);
+            {
+                xSemaphoreTake(rf_learning_semaphore_mutex, pdMS_TO_TICKS(1000));
+                uint64_t rf_code = 0, initial_rf_code = 0;
+                uint8_t correct_rf_codes = 0;
+                uint8_t failed_rf_codes = 0;
+                uint8_t rf_action = INPUT_UNKNOWN_ACTION;
+                char rf_label[64] = "";
+                i2c_oled_generic_info_screen(2, "RF Learning", "Press remote key");
+
+                xQueueReset(rf_learning_queue);
+                while (xQueueReceive(rf_learning_queue, &rf_code, pdMS_TO_TICKS(30 * 1000)))
+                {
+                    if (10 == correct_rf_codes)
+                    {
+                        if (config_check_remote(rf_code))
+                        {
+                            i2c_oled_generic_info_screen(4, "RF Learning", "This remote is already", "configured, aborting", rf_label);
+                            vTaskDelay(pdMS_TO_TICKS(2000));
+                            break;
+                        }
+                        i2c_oled_generic_info_screen(4, "RF Learning", "Learning", "success", rf_label);
+                        vTaskDelay(pdMS_TO_TICKS(2000));
+
+                        while (RECEIVE_FROM_BTN_QUEUE(btn))
+                        {
+                            if (IS_BTN_PRESSED(btn, BTN1_PIN))
+                                rf_action = NEXT_INPUT_ACTION(rf_action);
+                            else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+                                rf_action = NEXT_INPUT_ACTION(rf_action);
+                            else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                                break;
+
+                            char label[64];
+                            snprintf(label, sizeof(label), "%s", INPUT_ACTION_TO_STRING(rf_action));
+                            if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
+                                i2c_oled_generic_info_screen(4, "RF Learning", "Please select", label, rf_label);
+                        }
+                        if (INPUT_UNKNOWN_ACTION == rf_action)
+                        {
+                            i2c_oled_generic_info_screen(3, "RF Learning", "No action selected", "remote not added");
+                            vTaskDelay(pdMS_TO_TICKS(2000));
+                        }
+                        else
+                        {
+                            bool add_status = config_add_remote(initial_rf_code, rf_action);
+                            if (add_status)
+                            {
+                                i2c_oled_generic_info_screen(4, "RF Learning", "Remote added", "successfuly", rf_label);
+                                io_buzzer(3, 20, 20);
+                            }
+                            else
+                            {
+                                i2c_oled_generic_info_screen(4, "RF Learning", "Remote add", "failed(memory full)", rf_label);
+                            }
+                            vTaskDelay(pdMS_TO_TICKS(2000));
+                        }
+                        break;
+                    }
+                    if (0 == initial_rf_code)
+                    {
+                        initial_rf_code = rf_code;
+                        snprintf(rf_label, sizeof(rf_label), "ID: %08X", (unsigned int)initial_rf_code);
+                        i2c_oled_generic_info_screen(4, "RF Learning", "Learning", "started", rf_label);
+                    }
+                    if (rf_code == initial_rf_code)
+                    {
+                        correct_rf_codes++;
+                        char label[64];
+                        ESP_LOGI("SADASDASd","ID: %08X", (unsigned int)initial_rf_code);
+                        snprintf(label, sizeof(label), "progress: %i%%", 10 * correct_rf_codes);
+                        i2c_oled_generic_info_screen(4, "RF Learning", "Learning", label, rf_label);
+                    }
+                    else
+                    {
+                        failed_rf_codes++;
+                    }
+                    if (failed_rf_codes > 5)
+                    {
+                        i2c_oled_generic_info_screen(3, "RF Learning", "Learning failed", "try again");
+                        vTaskDelay(pdMS_TO_TICKS(2000));
+                        break;
+                    }
+                }
+                xSemaphoreGive(rf_learning_semaphore_mutex);
+            }
+            break;
+            case 2:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    uint64_t rf_code = config_get_next_remote(0);
+
+                    if(0 == rf_code){
+                        i2c_oled_generic_info_screen(2, "RF Learning", "No RF remote detected");
+                        vTaskDelay(pdMS_TO_TICKS(2000));
+                        break;
+                    }
+
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN) || IS_BTN_PRESSED(btn, BTN3_PIN))
+                    {
+                        rf_code = config_get_next_remote(rf_code);
+                        rf_code == 0 ? config_get_next_remote(0) : config_get_next_remote(0); 
+                    }
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                    {
+                        config_remove_remote(rf_code);
+                        io_buzzer(3, 20, 20);
+
+                        char label[64];
+                        snprintf(label, sizeof(label), "ID: %08X", (unsigned int)rf_code);
+                        i2c_oled_generic_info_screen(3, "RF Learning", "RF removed", label);
+
+                        vTaskDelay(pdMS_TO_TICKS(2000));
+                        break;
+                    }
+                                                
+
+                    char label[64];
+                    snprintf(label, sizeof(label), "-> ID: %08X", (unsigned int)rf_code);
+                    if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
+                        i2c_oled_generic_info_screen(4, "RF Learning", "Please select RF", "code to remove", label);
+                }
+                break;
+            default:
+                break;
+            }
+
+            if (return_result == 0xFF)
+                return TIMER_RETURN;
+        }
+        if (btn.event == BUTTON_RELESED)
+            i2c_oled_menu("Config->RF", pos, menu_options, "Add", "Remove");
+    }
+    return TIMER_RETURN;
+}
+
+menu_return_result_e ui_menu_config_menu()
+{
+
+    const uint8_t menu_options = HW_CHECK_RF_ENABLED() ? 5 : 4;
+    uint8_t pos = 0;
+    button_event_t btn;
+    while (RECEIVE_FROM_BTN_QUEUE(btn))
+    {
+        if (IS_BTN_PRESSED(btn, BTN1_PIN))
+            pos = pos < menu_options ? pos + 1 : pos;
+        else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+            pos = pos > 0 ? pos - 1 : pos;
+        else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+        {
+            menu_return_result_e return_result = 0;
+            switch (pos)
+            {
+            case 0:
+                return USER_RETURN;
+                break;
+            case 1:
+                return_result = ui_menu_config_wing_submenu(RIGHT_WING);
                 break;
             case 2:
-                return_result = ui_menu_configuration_wing_submenu(LEFT_WING);
+                return_result = ui_menu_config_wing_submenu(LEFT_WING);
                 break;
             case 3:
-                return_result = ui_menu_configuration_input_submenu();
+                return_result = ui_menu_config_input_submenu();
                 break;
             case 4:
-                return_result = ui_menu_configuration_output_submenu();
+                return_result = ui_menu_config_output_submenu();
+                break;
+            case 5:
+                return_result = ui_menu_config_rf_submenu();
                 break;
             default:
                 break;
@@ -356,7 +521,9 @@ menu_return_result_e ui_menu_configuration_menu()
                 return TIMER_RETURN;
         }
         if (btn.event == BUTTON_RELESED)
-            i2c_oled_menu("Configuration", pos, menu_options, "Right wing", "Left wing", "Input", "Output");
+        {
+            HW_CHECK_RF_ENABLED() ? i2c_oled_menu("Config", pos, menu_options, "Right wing", "Left wing", "Input", "Output", "RF") : i2c_oled_menu("Configuration", pos, menu_options, "Right wing", "Left wing", "Input", "Output");
+        }
     }
     return TIMER_RETURN;
 }
@@ -483,7 +650,7 @@ menu_return_result_e ui_menu_main_menu()
                 return_result = ui_menu_control_menu();
                 break;
             case 2:
-                return_result = ui_menu_configuration_menu();
+                return_result = ui_menu_config_menu();
                 break;
             case 3:
                 return_result = ui_menu_status_menu();

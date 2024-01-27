@@ -55,5 +55,6 @@
         "sstream": "c"
     },
     "idf.flashType": "JTAG",
-    "idf.port": "/dev/ttyACM1"
+    "idf.port": "/dev/ttyACM1",
+    "readable.showFeedback": false
 }

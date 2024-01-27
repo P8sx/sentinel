@@ -9,8 +9,8 @@ ESP_EVENT_DECLARE_BASE(IO_EVENTS);
 
 typedef enum io_event_e
 {
-    IO_INPUT_TRIGGERED_EVENT = 0,
-    IO_RF_EVENT = 1,
+    IO_INPUT_TRIGGERED_EVENT = 0x01,
+    IO_RF_EVENT = 0x10,
 } io_event_e;
 
 void io_init();

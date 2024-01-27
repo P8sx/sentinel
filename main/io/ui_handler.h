@@ -24,6 +24,9 @@ void ui_oled_display_task(void *pvParameters);
 #define IS_BTN_RELESED(btn, pin_num) (btn.pin == pin_num && btn.event == BUTTON_RELESED)
 #define IS_BTN_HELD(btn, pin_num) (btn.pin == pin_num && btn.event == BUTTON_HELD)
 
+extern SemaphoreHandle_t rf_learning_semaphore_mutex;
+extern QueueHandle_t rf_learning_queue;
+
 typedef struct debounce_t
 {
     uint8_t pin;

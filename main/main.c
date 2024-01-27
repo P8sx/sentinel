@@ -64,7 +64,8 @@ void app_main(void)
     ESP_LOGI("MAIN", "INIT DONE");
     while (1)
     {
-        ESP_LOGI("MAIN", "%i,%i", uxTaskGetStackHighWaterMark(ui_handler_button_task_handle), uxTaskGetStackHighWaterMark(ui_handler_oled_display_task_handle));
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // ESP_LOGI("MAIN", "%i,%i", uxTaskGetStackHighWaterMark(ui_handler_button_task_handle), uxTaskGetStackHighWaterMark(ui_handler_oled_display_task_handle));
+        // ESP_LOGI("MAIN", "%08X", (unsigned int)remotes_config[0].id);
+        vTaskDelay(portMAX_DELAY);
     }
 }

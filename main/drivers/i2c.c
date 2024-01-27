@@ -388,6 +388,27 @@ void i2c_oled_menu(const char *menu_title, int pos, int arg_count, ...)
 	va_end(arg_list);
 }
 
+
+void i2c_oled_generic_info_screen(int arg_count, ...){
+	va_list arg_list;
+	va_start(arg_list, arg_count);
+
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_5x8_tr);
+	u8g2_DrawStr(&u8g2, 8, 8, va_arg(arg_list, char *));
+	u8g2_DrawLine(&u8g2, 0, 10, 127, 10);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+	for(int i = 1; i < arg_count && i < 4; i++){
+		char *str = va_arg(arg_list, char *);
+		u8g2_DrawStr(&u8g2, 64 - (u8g2_GetStrWidth(&u8g2, str)/2), 24 + 16 * (i-1), str);
+	}
+	u8g2_SendBuffer(&u8g2);
+
+	va_end(arg_list);
+
+}
 void i2c_oled_menu_status()
 {
 	if (!i2c_oled_init)

@@ -180,6 +180,8 @@ typedef struct device_config_t
     char sw_version[32];
     char hw_version[32];
 
+    uint16_t hw_options;
+
 } device_config_t;
 
 typedef struct rf_remote_config_t

@@ -4,11 +4,14 @@
 #include "hal/gpio_types.h"
 #include "common/types.h"
 
-extern device_config_t device_config;
 void config_load();
 void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
 void config_update_input_settings(input_action_t in1, input_action_t in2, input_action_t in3, input_action_t in4);
 void config_update_output_settings(output_action_t out1, output_action_t out2);
+bool config_add_remote(uint64_t rf_code, input_action_t action);
+void config_remove_remote(uint64_t rf_code);
+bool config_check_remote(uint64_t rf_code);
+uint64_t config_get_next_remote(uint64_t rf_code);
 
 #define HW_VERSION                          "v1.0"
 
@@ -95,6 +98,8 @@ void config_update_output_settings(output_action_t out1, output_action_t out2);
 #define UI_LOG_TAG                          "UI"
 #define CFG_LOG_TAG                         "CFG"
 #define MQTT_LOG_TAG                        "MQTT"
+#define IO_LOG_TAG                          "IO"
+#define RF_LOG_TAG                          "RF"
 
 /* Config keys */
 #define CFG_NAMESPACE                       "cfg-nmspace"
@@ -117,5 +122,19 @@ void config_update_output_settings(output_action_t out1, output_action_t out2);
 #define CFG_MQTT_PASSWORD                   "MQTT_PASSWORD"
 #define CFG_MQTT_USERNAME                   "MQTT_USERNAME"
 #define CFG_MQTT_PORT                       "MQTT_PORT"
+
+#define CFG_HW_OPTIONS                      "HW_OPTIONS"
+#define CFG_RF_LIST                         "RF_LIST"
+/* HW_OPTIONS */
+
+#define STATIC_CFG_NUM_OF_REMOTES           16
+#define HW_RF_ENABLED                       0x01
+
+
+extern device_config_t device_config;
+extern rf_remote_config_t remotes_config[STATIC_CFG_NUM_OF_REMOTES];
+
+#define HW_CHECK_RF_ENABLED() (device_config.hw_options && HW_RF_ENABLED)
+
 
 #endif
