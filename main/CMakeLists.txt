@@ -6,6 +6,7 @@ idf_component_register(
         "io/io_handler.c"
         "io/ui_handler.c"
         "drivers/i2c.c"
+        "drivers/modbus.c"
         "wireless/wifi.c"
         "common/config.c"
     INCLUDE_DIRS 

@@ -19,6 +19,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include <string.h>
+#include "drivers/modbus.h"
 
 TaskHandle_t tcp_server_task_handle = NULL;
 TaskHandle_t wing_action_task_handle = NULL;
@@ -27,6 +28,7 @@ TaskHandle_t left_wing_task_handle = NULL;
 
 TaskHandle_t ui_handler_button_task_handle = NULL;
 TaskHandle_t ui_handler_oled_display_task_handle = NULL;
+TaskHandle_t modbus_task_handle = NULL;
 
 void app_main(void)
 {
@@ -59,6 +61,9 @@ void app_main(void)
 
     ghota_config_init();
     mqtt_config_init();
+
+    modbus_init();
+    xTaskCreatePinnedToCore(modbus_task, "modbus_task", 4096, NULL, configMAX_PRIORITIES - 5, &modbus_task_handle, APP_CPU_NUM);
 
     io_buzzer(1, 50, 100);
     ESP_LOGI("MAIN", "INIT DONE");

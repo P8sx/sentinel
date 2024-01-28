@@ -7,6 +7,7 @@
 #include <u8g2.h>
 #include "esp_app_desc.h"
 #include "wireless/wifi.h"
+
 static bool i2c_oled_init = false;
 static SemaphoreHandle_t i2c_int_semaphore;
 static u8g2_t u8g2;
@@ -283,39 +284,14 @@ void i2c_oled_ota_update_failed()
 	u8g2_DrawStr(&u8g2, 30, 30, "Update failed");
 	u8g2_SendBuffer(&u8g2);
 }
-void i2c_oled_menaaau(uint8_t pos, const char *o1, const char *o2, const char *o3)
-{
-	if (!i2c_oled_init)
-		return;
-	u8g2_ClearBuffer(&u8g2);
-	u8g2_SetBitmapMode(&u8g2, 1);
-	u8g2_SetFontMode(&u8g2, 1);
-	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
-	if (pos <= 1)
-	{
-		u8g2_DrawStr(&u8g2, 36, 16, "Return");
-		u8g2_DrawXBMP(&u8g2, 16, 8, 16, 8, image_return_arrow_8x16_bits);
-		u8g2_DrawStr(&u8g2, 16, 36, o1);
-		u8g2_DrawStr(&u8g2, 16, 56, o2);
-		u8g2_DrawFrame(&u8g2, 4, 4 + pos * 20, 120, 16);
-	}
-	else
-	{
-		u8g2_DrawFrame(&u8g2, 4, (4 + pos * 20) - 20, 120, 16);
-		u8g2_DrawStr(&u8g2, 16, 16, o1);
-		u8g2_DrawStr(&u8g2, 16, 36, o2);
-		u8g2_DrawStr(&u8g2, 16, 56, o3);
-	}
-	u8g2_SendBuffer(&u8g2);
-}
 
-void i2c_oled_menu(const char *menu_title, int pos, int arg_count, ...)
+void i2c_oled_menu(const char *menu_title, int current_pos, int arg_count, ...)
 {
 	if (!i2c_oled_init)
 		return;
 
-	pos = pos % (arg_count + 1);
-	int menu_pos = pos % (arg_count + 1);
+	current_pos = current_pos % (arg_count + 1);
+	int menu_pos = current_pos % (arg_count + 1);
 
 	va_list arg_list;
 	va_start(arg_list, arg_count);
@@ -328,7 +304,7 @@ void i2c_oled_menu(const char *menu_title, int pos, int arg_count, ...)
 	u8g2_DrawLine(&u8g2, 0, 10, 127, 10);
 	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
 
-	if (pos == arg_count && pos > 2)
+	if (current_pos == arg_count && current_pos > 2)
 	{
 		while ((menu_pos - 1) > 2)
 		{
@@ -388,6 +364,135 @@ void i2c_oled_menu(const char *menu_title, int pos, int arg_count, ...)
 	va_end(arg_list);
 }
 
+void i2c_oled_menu_with_params(const char *menu_title, int current_pos, bool selected ,int arg_count, ...)
+{
+	if (!i2c_oled_init)
+		return;
+
+	char *str = NULL;
+	uint8_t str_len = 0;
+	int menus_count = arg_count/2;
+	
+	current_pos = current_pos % (menus_count + 1);
+	int menu_pos = current_pos % (menus_count + 1);
+
+	va_list arg_list;
+	va_start(arg_list, arg_count);
+
+	u8g2_ClearBuffer(&u8g2);
+	u8g2_SetBitmapMode(&u8g2, 1);
+	u8g2_SetFontMode(&u8g2, 1);
+	u8g2_SetFont(&u8g2, u8g2_font_5x8_tr);
+	u8g2_DrawStr(&u8g2, 8, 8, menu_title);
+	u8g2_DrawLine(&u8g2, 0, 10, 127, 10);
+	u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+
+	if (current_pos == menus_count && current_pos > 2)
+	{
+		while ((menu_pos - 1) > 2)
+		{
+			(void)va_arg(arg_list, char *);
+			(void)va_arg(arg_list, char *);
+			menu_pos--;
+		}
+		menu_pos = 3;
+	}
+	else
+	{
+		while (menu_pos > 2)
+		{
+			(void)va_arg(arg_list, char *);
+			(void)va_arg(arg_list, char *);
+			menu_pos--;
+		}
+	}
+	
+	if (menu_pos == 0)
+	{
+		u8g2_DrawStr(&u8g2, 29, 24, "Return");
+		u8g2_DrawXBMP(&u8g2, 8, 16, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawFrame(&u8g2, 2, 12, 124, 16);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		u8g2_DrawStr(&u8g2, 120-u8g2_GetStrWidth(&u8g2, str), 40, str);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		u8g2_DrawStr(&u8g2, 120-u8g2_GetStrWidth(&u8g2, str), 56, str);
+	}
+	else if (menu_pos == 1)
+	{
+		u8g2_DrawStr(&u8g2, 29, 24, "Return");
+		u8g2_DrawXBMP(&u8g2, 8, 16, 16, 8, image_return_arrow_8x16_bits);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 40, str);
+		u8g2_DrawFrame(&u8g2, selected ? 116-str_len : 2, 12 + 1 * 16, selected ? str_len + 8 : 124, 16);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 56, str);
+	}
+	else if (menu_pos == 2 && menus_count == 2)
+	{
+		u8g2_DrawStr(&u8g2, 29, 24, "Return");
+		u8g2_DrawXBMP(&u8g2, 8, 16, 16, 8, image_return_arrow_8x16_bits);
+
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list, char *));
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 40, str);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 56, str);
+		u8g2_DrawFrame(&u8g2, selected ? 116-str_len : 2, 12 + 2 * 16, selected ? str_len + 8 : 124, 16);
+	}
+	else if (menu_pos == 2)
+	{
+		u8g2_DrawStr(&u8g2, 8, 24, va_arg(arg_list, char *));
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 24, str);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 40, str);
+		u8g2_DrawFrame(&u8g2, selected ? 116-str_len : 2, 12 + 1 * 16, selected ? str_len + 8 : 124, 16);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 56, str);
+	}
+	else if (menu_pos == 3)
+	{
+		u8g2_DrawStr(&u8g2, 8, 24, va_arg(arg_list, char *));
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 24, str);
+		u8g2_DrawStr(&u8g2, 8, 40, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 40, str);
+		u8g2_DrawStr(&u8g2, 8, 56, va_arg(arg_list, char *));
+
+		str = va_arg(arg_list, char *);
+		str_len = u8g2_GetStrWidth(&u8g2, str);
+		u8g2_DrawStr(&u8g2, 120-str_len, 56, str);
+		u8g2_DrawFrame(&u8g2, selected ? 116-str_len : 2, 12 + 2 * 16, selected ? str_len + 8 : 124, 16);
+	}
+	u8g2_SendBuffer(&u8g2);
+	va_end(arg_list);
+}
+
 
 void i2c_oled_generic_info_screen(int arg_count, ...){
 	va_list arg_list;
@@ -409,6 +514,8 @@ void i2c_oled_generic_info_screen(int arg_count, ...){
 	va_end(arg_list);
 
 }
+
+
 void i2c_oled_menu_status()
 {
 	if (!i2c_oled_init)

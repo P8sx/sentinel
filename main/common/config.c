@@ -8,6 +8,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_app_desc.h"
+#include "driver/uart.h"
 /* Default configuration */
 
 device_config_t device_config;
@@ -54,6 +55,9 @@ void config_load()
         .mqtt_password = "",
         .mqtt_port = 1883,
         .hw_options = 0,
+        .modbus_slave_id = 1,
+        .modbus_baudrate = 115200,
+        .modbus_parity = UART_PARITY_DISABLE,
     };
     rf_remote_config_t initial_rf_config[STATIC_CFG_NUM_OF_REMOTES] = {0};
 
@@ -97,6 +101,12 @@ void config_load()
     /* RF remotes */
     load_config_value(nvs_handle, CFG_RF_LIST, &initial_rf_config, sizeof(initial_rf_config));
 
+    /*  Modbus config */
+    load_config_value(nvs_handle, CFG_MODBUS_BAUDRATE, &initial_device_config.modbus_baudrate, sizeof(initial_device_config.modbus_baudrate));
+    load_config_value(nvs_handle, CFG_MODBUS_PARITY, &initial_device_config.modbus_parity, sizeof(initial_device_config.modbus_parity));
+    load_config_value(nvs_handle, CFG_MODBUS_SLAVE_ID, &initial_device_config.modbus_slave_id, sizeof(initial_device_config.modbus_slave_id));
+
+
     nvs_close(nvs_handle);
     memcpy(&device_config, &initial_device_config, sizeof(device_config));
     memcpy(&remotes_config, &initial_rf_config, sizeof(remotes_config));
@@ -107,7 +117,16 @@ void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_thres
     ESP_LOGI(CFG_LOG_TAG, "Config update start");
     nvs_handle_t nvs_handle;
     ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext", CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
-
+    if(RIGHT_WING == wing_id){
+        device_config.right_wing_dir = dir;
+        device_config.right_wing_ocp_count = ocp_count;
+        device_config.right_wing_ocp_threshold = ocp_threshold;
+    }
+    else{
+        device_config.left_wing_dir = dir;
+        device_config.left_wing_dir = ocp_count;
+        device_config.left_wing_dir = ocp_threshold;       
+    }
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_DIR : CFG_LEFT_WING_DIR, &dir, sizeof(dir));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_THRESHOLD : CFG_LEFT_WING_OCP_THRESHOLD, &ocp_threshold, sizeof(ocp_threshold));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_COUNT : CFG_LEFT_WING_OCP_COUNT, &ocp_count, sizeof(ocp_count));
@@ -230,4 +249,24 @@ uint64_t config_get_next_remote(uint64_t rf_code){
         }
     }
     return 0;
+}
+
+
+void config_update_modbus_settings(uint8_t slave_id, uint8_t parity, uint32_t baudrate)
+{
+    ESP_LOGI(CFG_LOG_TAG, "Config update start");
+    nvs_handle_t nvs_handle;
+    ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext", CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
+    device_config.modbus_baudrate = baudrate;
+    device_config.modbus_parity = parity;
+    device_config.modbus_slave_id = slave_id;       
+
+    save_config_value(nvs_handle, CFG_MODBUS_BAUDRATE, &baudrate, sizeof(device_config.modbus_baudrate));
+    save_config_value(nvs_handle, CFG_MODBUS_PARITY, &parity, sizeof(device_config.modbus_parity));
+    save_config_value(nvs_handle, CFG_MODBUS_SLAVE_ID, &slave_id, sizeof(device_config.modbus_slave_id));
+
+    ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+    nvs_close(nvs_handle);
+
+    ESP_LOGI(CFG_LOG_TAG, "Config updated");
 }

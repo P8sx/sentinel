@@ -20,103 +20,100 @@ TimerHandle_t out2_timer_handle = NULL;
 
 static void io_handler_wing_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-    if (WING_STATUS_CHANGED == event_id)
+    wing_info_t wing_status = *(wing_info_t *)event_data;
+
+    if (RIGHT_WING == wing_status.id)
     {
-        wing_info_t wing_status = *(wing_info_t *)event_data;
-
-        if (RIGHT_WING == wing_status.id)
+        /* When right wing is moving */
+        if (OPENING == wing_status.state || CLOSING == wing_status.state)
         {
-            /* When right wing is moving */
-            if (OPENING == wing_status.state || CLOSING == wing_status.state)
+            if (RIGHT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
             {
-                if (RIGHT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
-                {
-                    gpio_set_level(OUT1_PIN, 1);
-                }
-                if (RIGHT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
-                {
-                    gpio_set_level(OUT2_PIN, 1);
-                }
-
-                if (RIGHT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
-                {
-                    xTimerStart(out1_timer_handle, 0);
-                }
-                if (RIGHT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
-                {
-                    xTimerStart(out2_timer_handle, 0);
-                }
+                gpio_set_level(OUT1_PIN, 1);
             }
-            /* When right wing is stopped */
-            else
+            if (RIGHT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
             {
-                if (RIGHT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
-                {
-                    gpio_set_level(OUT1_PIN, 0);
-                }
-                if (RIGHT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
-                {
-                    gpio_set_level(OUT2_PIN, 0);
-                }
+                gpio_set_level(OUT2_PIN, 1);
+            }
 
-                if (RIGHT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
-                {
-                    xTimerStop(out1_timer_handle, 0);
-                    gpio_set_level(OUT1_PIN, 0);
-                }
-                if (RIGHT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
-                {
-                    xTimerStop(out2_timer_handle, 0);
-                    gpio_set_level(OUT2_PIN, 0);
-                }
+            if (RIGHT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
+            {
+                xTimerStart(out1_timer_handle, 0);
+            }
+            if (RIGHT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
+            {
+                xTimerStart(out2_timer_handle, 0);
             }
         }
-
-        if (LEFT_WING == wing_status.id)
+        /* When right wing is stopped */
+        else
         {
-            /* When left wing is moving */
-            if (OPENING == wing_status.state || CLOSING == wing_status.state)
+            if (RIGHT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
             {
-                if (LEFT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
-                {
-                    gpio_set_level(OUT1_PIN, 1);
-                }
-                if (LEFT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
-                {
-                    gpio_set_level(OUT2_PIN, 1);
-                }
-
-                if (LEFT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
-                {
-                    xTimerStart(out1_timer_handle, 0);
-                }
-                if (LEFT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
-                {
-                    xTimerStart(out2_timer_handle, 0);
-                }
+                gpio_set_level(OUT1_PIN, 0);
             }
-            /* When left wing is stopped */
-            else
+            if (RIGHT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
             {
-                if (LEFT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
-                {
-                    gpio_set_level(OUT1_PIN, 0);
-                }
-                if (LEFT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
-                {
-                    gpio_set_level(OUT2_PIN, 0);
-                }
+                gpio_set_level(OUT2_PIN, 0);
+            }
 
-                if (LEFT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
-                {
-                    xTimerStop(out1_timer_handle, 0);
-                    gpio_set_level(OUT1_PIN, 0);
-                }
-                if (LEFT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
-                {
-                    xTimerStop(out2_timer_handle, 0);
-                    gpio_set_level(OUT2_PIN, 0);
-                }
+            if (RIGHT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
+            {
+                xTimerStop(out1_timer_handle, 0);
+                gpio_set_level(OUT1_PIN, 0);
+            }
+            if (RIGHT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
+            {
+                xTimerStop(out2_timer_handle, 0);
+                gpio_set_level(OUT2_PIN, 0);
+            }
+        }
+    }
+
+    if (LEFT_WING == wing_status.id)
+    {
+        /* When left wing is moving */
+        if (OPENING == wing_status.state || CLOSING == wing_status.state)
+        {
+            if (LEFT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
+            {
+                gpio_set_level(OUT1_PIN, 1);
+            }
+            if (LEFT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
+            {
+                gpio_set_level(OUT2_PIN, 1);
+            }
+
+            if (LEFT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
+            {
+                xTimerStart(out1_timer_handle, 0);
+            }
+            if (LEFT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
+            {
+                xTimerStart(out2_timer_handle, 0);
+            }
+        }
+        /* When left wing is stopped */
+        else
+        {
+            if (LEFT_WING_ON == device_config.output_actions[0] || ANY_WING_ON == device_config.output_actions[0])
+            {
+                gpio_set_level(OUT1_PIN, 0);
+            }
+            if (LEFT_WING_ON == device_config.output_actions[1] || ANY_WING_ON == device_config.output_actions[1])
+            {
+                gpio_set_level(OUT2_PIN, 0);
+            }
+
+            if (LEFT_WING_BLINK == device_config.output_actions[0] || ANY_WING_BLINK == device_config.output_actions[0])
+            {
+                xTimerStop(out1_timer_handle, 0);
+                gpio_set_level(OUT1_PIN, 0);
+            }
+            if (LEFT_WING_BLINK == device_config.output_actions[1] || ANY_WING_BLINK == device_config.output_actions[1])
+            {
+                xTimerStop(out2_timer_handle, 0);
+                gpio_set_level(OUT2_PIN, 0);
             }
         }
     }
@@ -164,7 +161,7 @@ static void io_handler_io_rf_event_handler(void *arg, esp_event_base_t event_bas
     }
 
     ESP_LOGI(RF_LOG_TAG, "RF code received: %08X", (unsigned int)rf_code);
-    if (esp_timer_get_time() - last_trigger > 2*1000*1000)
+    if (esp_timer_get_time() - last_trigger > 2 * 1000 * 1000)
     {
         for (size_t i = 0; i < STATIC_CFG_NUM_OF_REMOTES; i++)
         {
@@ -199,10 +196,7 @@ void io_handler_init()
 {
     ESP_ERROR_CHECK(esp_event_handler_instance_register(GATE_EVENTS, ESP_EVENT_ANY_ID, &io_handler_wing_event_handler, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IO_EVENTS, IO_INPUT_TRIGGERED_EVENT, &io_handler_io_event_handler, NULL, NULL));
-    if (HW_CHECK_RF_ENABLED())
-    {
-        ESP_ERROR_CHECK(esp_event_handler_instance_register(IO_EVENTS, IO_RF_EVENT, &io_handler_io_rf_event_handler, NULL, NULL));
-    }
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IO_EVENTS, IO_RF_EVENT, &io_handler_io_rf_event_handler, NULL, NULL));
 
     out1_timer_handle = xTimerCreate("out1_timer", pdMS_TO_TICKS(1 * 1000), pdTRUE, (void *)10, output_timer_callback);
     out2_timer_handle = xTimerCreate("out2_timer", pdMS_TO_TICKS(1 * 1000), pdTRUE, (void *)11, output_timer_callback);

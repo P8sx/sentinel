@@ -135,7 +135,7 @@ static void IRAM_ATTR rf_isr_handler(void *arg)
                     {
                         serial_num = (serial_num << 1) + bit_array[i];
                     };
-                    ESP_ERROR_CHECK(esp_event_isr_post(IO_EVENTS, IO_RF_EVENT, &serial_num, sizeof(uint64_t *), NULL));
+                    esp_event_isr_post(IO_EVENTS, IO_RF_EVENT, &serial_num, sizeof(uint64_t *), NULL);
                 }
             }
             else
@@ -185,7 +185,7 @@ void io_init_inputs()
     ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_LEFT_WING_A_PIN, input_isr_handler, (void *)ENDSTOP_LEFT_WING_A_PIN));
     ESP_ERROR_CHECK(gpio_isr_handler_add(ENDSTOP_LEFT_WING_B_PIN, input_isr_handler, (void *)ENDSTOP_LEFT_WING_B_PIN));
 
-    if(HW_CHECK_RF_ENABLED()){
+    if(device_config.hw_options && HW_RF_ENABLED){
         gpio_config_t rf_config = {
             .intr_type = GPIO_INTR_ANYEDGE,
             .mode = GPIO_MODE_INPUT,
@@ -217,7 +217,7 @@ void io_init_outputs()
         .pin_bit_mask = ((1ULL << BUZZER_PIN) | (1ULL << OUT1_PIN) | (1ULL << OUT2_PIN)),
         .pull_up_en = 0,
         .pull_down_en = 0};
-    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_ERROR_CHECK(gpio_config(&io_conf));   
 }
 
 static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)

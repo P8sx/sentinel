@@ -20,6 +20,7 @@ void i2c_oled_ota_start_update();
 void i2c_oled_ota_finish_update();
 void i2c_oled_ota_update_failed();
 void i2c_oled_menu(const char *menu_title, int pos, int arg_count, ...);
+void i2c_oled_menu_with_params(const char *menu_title, int current_pos, bool selected ,int arg_count, ...);
 void i2c_oled_generic_info_screen(int arg_count, ...);
 
 

@@ -182,6 +182,10 @@ typedef struct device_config_t
 
     uint16_t hw_options;
 
+    uint8_t modbus_slave_id;
+    uint8_t modbus_parity;
+    uint32_t modbus_baudrate;
+    
 } device_config_t;
 
 typedef struct rf_remote_config_t

@@ -14,6 +14,7 @@
 #include "esp_ghota.h"
 #include "esp_timer.h"
 #include "wireless/wifi.h"
+#include "driver/uart.h"
 
 ESP_EVENT_DEFINE_BASE(UI_EVENTS);
 
@@ -101,15 +102,11 @@ void ui_handler_init()
 
     button_queue = xQueueCreate(5, sizeof(button_event_t));
 
-    if (HW_CHECK_RF_ENABLED())
-    {
-        rf_learning_semaphore_mutex = xSemaphoreCreateBinary();
-        xSemaphoreGive(rf_learning_semaphore_mutex);
-        rf_learning_queue = xQueueCreate(3, sizeof(uint64_t));
-    }
+    rf_learning_semaphore_mutex = xSemaphoreCreateBinary();
+    xSemaphoreGive(rf_learning_semaphore_mutex);
+    rf_learning_queue = xQueueCreate(3, sizeof(uint64_t));
 }
 
-// NEED MAJOR REFACTOR #spaghetti code
 menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
 {
     const uint8_t menu_options = 3;
@@ -135,9 +132,9 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
         direction = (float)device_config.left_wing_dir;
     }
 
-    snprintf(option_labels[0], sizeof(option_labels[0]), "OCP Threshold   %.2fA", ocp_threshold);
-    snprintf(option_labels[1], sizeof(option_labels[0]), "OCP Count           %i", ocp_count);
-    snprintf(option_labels[2], sizeof(option_labels[0]), direction ? "Direction               false" : "Direction               true");
+    snprintf(option_labels[0], sizeof(option_labels[0]), "%.2fA", ocp_threshold);
+    snprintf(option_labels[1], sizeof(option_labels[0]), "%i", ocp_count);
+    snprintf(option_labels[2], sizeof(option_labels[0]), direction ? "false" : "true");
 
     while (RECEIVE_FROM_BTN_QUEUE(btn))
     {
@@ -153,7 +150,6 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
                 return USER_RETURN;
                 break;
             case 1:
-                snprintf(option_labels[0], sizeof(option_labels[0]), "OCP Threshold->%.2fA", ocp_threshold);
                 while (RECEIVE_FROM_BTN_QUEUE(btn))
                 {
                     if (IS_BTN_PRESSED(btn, BTN1_PIN))
@@ -167,15 +163,13 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
                     else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                         break;
 
-                    snprintf(option_labels[0], sizeof(option_labels[0]), "OCP Threshold->%.2fA", ocp_threshold);
+                    snprintf(option_labels[0], sizeof(option_labels[0]), "%.2fA", ocp_threshold);
 
                     if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
-                        i2c_oled_menu(menu_label, pos, 3, option_labels[0], option_labels[1], option_labels[2]);
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "OCP Thr", option_labels[0], "OCP Count", option_labels[1], "Direction", option_labels[2]);
                 }
-                snprintf(option_labels[0], sizeof(option_labels[0]), "OCP Threshold   %.2fA", ocp_threshold);
                 break;
             case 2:
-                snprintf(option_labels[1], sizeof(option_labels[0]), "OCP Count         ->%i", ocp_count);
                 while (RECEIVE_FROM_BTN_QUEUE(btn))
                 {
                     if (IS_BTN_PRESSED(btn, BTN1_PIN))
@@ -189,15 +183,13 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
                     else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                         break;
 
-                    snprintf(option_labels[1], sizeof(option_labels[0]), "OCP Count         ->%i", ocp_count);
+                    snprintf(option_labels[1], sizeof(option_labels[0]), "%i", ocp_count);
 
                     if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
-                        i2c_oled_menu(menu_label, pos, 3, option_labels[0], option_labels[1], option_labels[2]);
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "OCP Thr", option_labels[0], "OCP Count", option_labels[1], "Direction", option_labels[2]);
                 }
-                snprintf(option_labels[1], sizeof(option_labels[0]), "OCP Count           %i", ocp_count);
                 break;
             case 3:
-                snprintf(option_labels[2], sizeof(option_labels[0]), direction ? "Direction            ->false" : "Direction            ->true");
                 while (RECEIVE_FROM_BTN_QUEUE(btn))
                 {
                     if (IS_BTN_PRESSED(btn, BTN1_PIN) || IS_BTN_PRESSED(btn, BTN3_PIN))
@@ -205,12 +197,11 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
                     else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                         break;
 
-                    snprintf(option_labels[2], sizeof(option_labels[0]), direction ? "Direction            ->false" : "Direction            ->true");
+                    snprintf(option_labels[2], sizeof(option_labels[0]), direction ? "false" : "true");
 
                     if (btn.event == BUTTON_RELESED)
-                        i2c_oled_menu(menu_label, pos, 3, option_labels[0], option_labels[1], option_labels[2]);
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "OCP Thr", option_labels[0], "OCP Count", option_labels[1], "Direction", option_labels[2]);
                 }
-                snprintf(option_labels[2], sizeof(option_labels[0]), direction ? "Direction               false" : "Direction               true");
                 break;
             default:
                 break;
@@ -219,7 +210,7 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
             io_buzzer(3, 20, 20);
         }
         if (btn.event == BUTTON_RELESED)
-            i2c_oled_menu(menu_label, pos, menu_options, option_labels[0], option_labels[1], option_labels[2]);
+            i2c_oled_menu_with_params(menu_label, pos, false, menu_options * 2, "OCP Thr", option_labels[0], "OCP Count", option_labels[1], "Direction", option_labels[2]);
     }
     return TIMER_RETURN;
 }
@@ -233,10 +224,10 @@ menu_return_result_e ui_menu_config_input_submenu()
     uint8_t current_actions[4] = {device_config.input_actions[0], device_config.input_actions[1], device_config.input_actions[2], device_config.input_actions[3]};
     char option_labels[4][30];
 
-    snprintf(option_labels[0], sizeof(option_labels[0]), "IN1 = %s", INPUT_ACTION_TO_STRING(current_actions[0]));
-    snprintf(option_labels[1], sizeof(option_labels[0]), "IN2 = %s", INPUT_ACTION_TO_STRING(current_actions[1]));
-    snprintf(option_labels[2], sizeof(option_labels[0]), "IN3 = %s", INPUT_ACTION_TO_STRING(current_actions[2]));
-    snprintf(option_labels[3], sizeof(option_labels[0]), "IN4 = %s", INPUT_ACTION_TO_STRING(current_actions[3]));
+    snprintf(option_labels[0], sizeof(option_labels[0]), "%s", INPUT_ACTION_TO_STRING(current_actions[0]));
+    snprintf(option_labels[1], sizeof(option_labels[0]), "%s", INPUT_ACTION_TO_STRING(current_actions[1]));
+    snprintf(option_labels[2], sizeof(option_labels[0]), "%s", INPUT_ACTION_TO_STRING(current_actions[2]));
+    snprintf(option_labels[3], sizeof(option_labels[0]), "%s", INPUT_ACTION_TO_STRING(current_actions[3]));
 
     while (RECEIVE_FROM_BTN_QUEUE(btn))
     {
@@ -250,7 +241,6 @@ menu_return_result_e ui_menu_config_input_submenu()
                 return USER_RETURN;
             uint8_t in_sel = pos - 1;
 
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i -> %s", in_sel + 1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
             while (RECEIVE_FROM_BTN_QUEUE(btn))
             {
                 if (IS_BTN_PRESSED(btn, BTN1_PIN))
@@ -260,17 +250,16 @@ menu_return_result_e ui_menu_config_input_submenu()
                 else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                     break;
 
-                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i -> %s", in_sel + 1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
+                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "%s", INPUT_ACTION_TO_STRING(current_actions[in_sel]));
                 if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
-                    i2c_oled_menu("Config->Input", pos, menu_options, option_labels[0], option_labels[1], option_labels[2], option_labels[3]);
+                    i2c_oled_menu_with_params("Config->Input", pos, true, menu_options * 2, "IN1", option_labels[0], "IN2", option_labels[1], "IN3", option_labels[2], "IN4", option_labels[3]);
             }
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "IN%i = %s", in_sel + 1, INPUT_ACTION_TO_STRING(current_actions[in_sel]));
 
             config_update_input_settings(current_actions[0], current_actions[1], current_actions[2], current_actions[3]);
             io_buzzer(3, 20, 20);
         }
         if (btn.event == BUTTON_RELESED)
-            i2c_oled_menu("Config->Input", pos, menu_options, option_labels[0], option_labels[1], option_labels[2], option_labels[3]);
+            i2c_oled_menu_with_params("Config->Input", pos, false, menu_options * 2, "IN1", option_labels[0], "IN2", option_labels[1], "IN3", option_labels[2], "IN4", option_labels[3]);
     }
     return TIMER_RETURN;
 }
@@ -284,8 +273,8 @@ menu_return_result_e ui_menu_config_output_submenu()
     uint8_t current_actions[2] = {device_config.output_actions[0], device_config.output_actions[1]};
     char option_labels[2][40];
 
-    snprintf(option_labels[0], sizeof(option_labels[0]), "OUT1 = %s", OUTPUT_ACTION_TO_STRING(current_actions[0]));
-    snprintf(option_labels[1], sizeof(option_labels[0]), "OUT2 = %s", OUTPUT_ACTION_TO_STRING(current_actions[1]));
+    snprintf(option_labels[0], sizeof(option_labels[0]), "%s", OUTPUT_ACTION_TO_STRING(current_actions[0]));
+    snprintf(option_labels[1], sizeof(option_labels[0]), "%s", OUTPUT_ACTION_TO_STRING(current_actions[1]));
 
     while (RECEIVE_FROM_BTN_QUEUE(btn))
     {
@@ -298,8 +287,6 @@ menu_return_result_e ui_menu_config_output_submenu()
             if (0 == pos)
                 return USER_RETURN;
             uint8_t in_sel = pos - 1;
-
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i -> %s", in_sel + 1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
             while (RECEIVE_FROM_BTN_QUEUE(btn))
             {
                 if (IS_BTN_PRESSED(btn, BTN1_PIN))
@@ -309,17 +296,16 @@ menu_return_result_e ui_menu_config_output_submenu()
                 else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                     break;
 
-                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i -> %s", in_sel + 1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
+                snprintf(option_labels[in_sel], sizeof(option_labels[0]), "%s", OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
                 if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
-                    i2c_oled_menu("Config->Output", pos, menu_options, option_labels[0], option_labels[1]);
+                    i2c_oled_menu_with_params("Config->Output", pos, true, menu_options * 2, "OUT1", option_labels[0], "OUT2", option_labels[1]);
             }
-            snprintf(option_labels[in_sel], sizeof(option_labels[0]), "OUT%i = %s", in_sel + 1, OUTPUT_ACTION_TO_STRING(current_actions[in_sel]));
 
             config_update_output_settings(current_actions[0], current_actions[1]);
             io_buzzer(3, 20, 20);
         }
         if (btn.event == BUTTON_RELESED)
-            i2c_oled_menu("Config->Output", pos, menu_options, option_labels[0], option_labels[1]);
+            i2c_oled_menu_with_params("Config->Output", pos, false, menu_options * 2, "OUT1", option_labels[0], "OUT2", option_labels[1]);
     }
     return TIMER_RETURN;
 }
@@ -354,7 +340,7 @@ menu_return_result_e ui_menu_config_rf_submenu()
                 i2c_oled_generic_info_screen(2, "RF Learning", "Press remote key");
 
                 xQueueReset(rf_learning_queue);
-                while (xQueueReceive(rf_learning_queue, &rf_code, pdMS_TO_TICKS(30 * 1000)))
+                while (xQueueReceive(rf_learning_queue, &rf_code, pdMS_TO_TICKS(10 * 1000)))
                 {
                     if (10 == correct_rf_codes)
                     {
@@ -412,7 +398,7 @@ menu_return_result_e ui_menu_config_rf_submenu()
                     {
                         correct_rf_codes++;
                         char label[64];
-                        ESP_LOGI("SADASDASd","ID: %08X", (unsigned int)initial_rf_code);
+                        ESP_LOGI("SADASDASd", "ID: %08X", (unsigned int)initial_rf_code);
                         snprintf(label, sizeof(label), "progress: %i%%", 10 * correct_rf_codes);
                         i2c_oled_generic_info_screen(4, "RF Learning", "Learning", label, rf_label);
                     }
@@ -435,7 +421,8 @@ menu_return_result_e ui_menu_config_rf_submenu()
                 {
                     uint64_t rf_code = config_get_next_remote(0);
 
-                    if(0 == rf_code){
+                    if (0 == rf_code)
+                    {
                         i2c_oled_generic_info_screen(2, "RF Learning", "No RF remote detected");
                         vTaskDelay(pdMS_TO_TICKS(2000));
                         break;
@@ -444,7 +431,7 @@ menu_return_result_e ui_menu_config_rf_submenu()
                     if (IS_BTN_PRESSED(btn, BTN1_PIN) || IS_BTN_PRESSED(btn, BTN3_PIN))
                     {
                         rf_code = config_get_next_remote(rf_code);
-                        rf_code == 0 ? config_get_next_remote(0) : config_get_next_remote(0); 
+                        rf_code == 0 ? config_get_next_remote(0) : config_get_next_remote(0);
                     }
                     else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                     {
@@ -458,7 +445,6 @@ menu_return_result_e ui_menu_config_rf_submenu()
                         vTaskDelay(pdMS_TO_TICKS(2000));
                         break;
                     }
-                                                
 
                     char label[64];
                     snprintf(label, sizeof(label), "-> ID: %08X", (unsigned int)rf_code);
@@ -479,10 +465,138 @@ menu_return_result_e ui_menu_config_rf_submenu()
     return TIMER_RETURN;
 }
 
+menu_return_result_e ui_menu_config_modbus_submenu()
+{
+    const uint8_t menu_options = 3;
+    uint8_t pos = 0;
+    button_event_t btn;
+
+    char option_labels[3][30];
+    const char menu_label[] = "Config->MODBUS";
+
+    const uint32_t baud_list[11] = {4800, 7200, 9600, 14400, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
+    const uint8_t baud_count = sizeof(baud_list) / sizeof(uint32_t);
+
+    uint8_t selected_baud = 0;
+    for (selected_baud = 0; selected_baud < baud_count && baud_list[selected_baud] != device_config.modbus_baudrate; ++selected_baud)
+        ;
+
+    uint8_t slave_id = device_config.modbus_slave_id;
+    uint8_t parity = device_config.modbus_parity;
+    uint32_t baudrate = device_config.modbus_baudrate;
+
+    snprintf(option_labels[0], sizeof(option_labels[0]), "%i", slave_id);
+    snprintf(option_labels[1], sizeof(option_labels[0]), "%s", parity == UART_PARITY_DISABLE ? "NONE" : parity == UART_PARITY_EVEN ? "EVEN"
+                                                                                                                                   : "ODD");
+    snprintf(option_labels[2], sizeof(option_labels[0]), "%i", (int)baud_list[selected_baud]);
+
+    while (RECEIVE_FROM_BTN_QUEUE(btn))
+    {
+        if (IS_BTN_PRESSED(btn, BTN1_PIN))
+            pos = pos < menu_options ? pos + 1 : pos;
+        else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+            pos = pos > 0 ? pos - 1 : pos;
+        else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+        {
+            switch (pos)
+            {
+            case 0:
+                if (baudrate != device_config.modbus_baudrate || parity != device_config.modbus_parity || slave_id != device_config.modbus_slave_id)
+                {
+                    config_update_modbus_settings(slave_id, parity, baudrate);
+                    io_buzzer(3, 20, 20);
+                    char timer_str[10];
+                    for (int i = 3; i > 0; i--)
+                    {
+                        snprintf(timer_str, sizeof(timer_str), "%is", i);
+                        i2c_oled_generic_info_screen(3, "MODBUS Update", "Rebooting in:", timer_str);
+                        vTaskDelay(pdMS_TO_TICKS(1000));
+                    }
+                    esp_restart();
+                }
+                return USER_RETURN;
+                break;
+            case 1:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN))
+                        slave_id--;
+                    else if (IS_BTN_HELD(btn, BTN1_PIN))
+                        slave_id -= 10;
+                    else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+                        slave_id++;
+                    else if (IS_BTN_HELD(btn, BTN3_PIN))
+                        slave_id += 10;
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                        break;
+
+                    snprintf(option_labels[0], sizeof(option_labels[0]), "%i", slave_id);
+                    if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Slave ID", option_labels[0], "Parity", option_labels[1], "Baudrate", option_labels[2]);
+                }
+                break;
+            case 2:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN))
+                    {
+                        if (parity == UART_PARITY_DISABLE)
+                            parity = UART_PARITY_EVEN;
+                        else if (parity == UART_PARITY_EVEN)
+                            parity = UART_PARITY_ODD;
+                        else if (parity == UART_PARITY_ODD)
+                            parity = UART_PARITY_DISABLE;
+                    }
+                    else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+                    {
+                        if (parity == UART_PARITY_DISABLE)
+                            parity = UART_PARITY_ODD;
+                        else if (parity == UART_PARITY_ODD)
+                            parity = UART_PARITY_EVEN;
+                        else if (parity == UART_PARITY_EVEN)
+                            parity = UART_PARITY_DISABLE;
+                    }
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                        break;
+
+                    snprintf(option_labels[1], sizeof(option_labels[0]), "%s", parity == UART_PARITY_DISABLE ? "NONE" : parity == UART_PARITY_EVEN ? "EVEN"
+                                                                                                                                                   : "ODD");
+                    if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Slave ID", option_labels[0], "Parity", option_labels[1], "Baudrate", option_labels[2]);
+                }
+                break;
+            case 3:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN))
+                        selected_baud = selected_baud > 0 ? selected_baud - 1 : baud_count - 1;
+                    else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+                        selected_baud = selected_baud < baud_count - 1 ? selected_baud + 1 : 0;
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                    {
+                        baudrate = baud_list[selected_baud];
+                        break;
+                    }
+
+                    snprintf(option_labels[2], sizeof(option_labels[0]), "%i", (int)baud_list[selected_baud]);
+                    if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Slave ID", option_labels[0], "Parity", option_labels[1], "Baudrate", option_labels[2]);
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        if (btn.event == BUTTON_RELESED)
+            i2c_oled_menu_with_params(menu_label, pos, false, menu_options * 2, "Slave ID", option_labels[0], "Parity", option_labels[1], "Baudrate", option_labels[2]);
+    }
+    return TIMER_RETURN;
+}
+
 menu_return_result_e ui_menu_config_menu()
 {
 
-    const uint8_t menu_options = HW_CHECK_RF_ENABLED() ? 5 : 4;
+    const uint8_t menu_options = 6;
     uint8_t pos = 0;
     button_event_t btn;
     while (RECEIVE_FROM_BTN_QUEUE(btn))
@@ -514,6 +628,9 @@ menu_return_result_e ui_menu_config_menu()
             case 5:
                 return_result = ui_menu_config_rf_submenu();
                 break;
+            case 6:
+                return_result = ui_menu_config_modbus_submenu();
+                break;
             default:
                 break;
             }
@@ -522,7 +639,7 @@ menu_return_result_e ui_menu_config_menu()
         }
         if (btn.event == BUTTON_RELESED)
         {
-            HW_CHECK_RF_ENABLED() ? i2c_oled_menu("Config", pos, menu_options, "Right wing", "Left wing", "Input", "Output", "RF") : i2c_oled_menu("Configuration", pos, menu_options, "Right wing", "Left wing", "Input", "Output");
+            i2c_oled_menu("Config", pos, menu_options, "Right wing", "Left wing", "Input", "Output", "RF", "MODBUS");
         }
     }
     return TIMER_RETURN;

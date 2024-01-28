@@ -52,9 +52,12 @@
         "stdbool.h": "c",
         "cstring": "c",
         "*.inc": "c",
-        "sstream": "c"
+        "sstream": "c",
+        "uart.h": "c",
+        "string": "c",
+        "string_view": "c",
+        "stdarg.h": "c"
     },
     "idf.flashType": "JTAG",
-    "idf.port": "/dev/ttyACM1",
-    "readable.showFeedback": false
+    "idf.port": "/dev/ttyACM1"
 }

@@ -8,6 +8,7 @@ void config_load();
 void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_threshold, uint16_t ocp_count);
 void config_update_input_settings(input_action_t in1, input_action_t in2, input_action_t in3, input_action_t in4);
 void config_update_output_settings(output_action_t out1, output_action_t out2);
+void config_update_modbus_settings(uint8_t slave_id, uint8_t parity, uint32_t baudrate);
 bool config_add_remote(uint64_t rf_code, input_action_t action);
 void config_remove_remote(uint64_t rf_code);
 bool config_check_remote(uint64_t rf_code);
@@ -64,8 +65,9 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 
 /* Drivers */
 #define RS485_TX_PIN                        GPIO_NUM_4
-#define RS485_EN_PIN                        GPIO_NUM_5
+#define RS485_RTS_PIN                       GPIO_NUM_5
 #define RS485_RX_PIN                        GPIO_NUM_6
+
 
 #define I2C_EXT_SDA_PIN                     GPIO_NUM_7
 #define I2C_EXT_SCL_PIN                     GPIO_NUM_15
@@ -100,6 +102,7 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 #define MQTT_LOG_TAG                        "MQTT"
 #define IO_LOG_TAG                          "IO"
 #define RF_LOG_TAG                          "RF"
+#define MODBUS_LOG_TAG                      "MODBUS"
 
 /* Config keys */
 #define CFG_NAMESPACE                       "cfg-nmspace"
@@ -112,7 +115,7 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 #define CFG_RIGHT_WING_OCP_THRESHOLD        "RW_OCP_THR"
 
 #define CFG_LEFT_WING_DIR                   "LW_DIR"
-#define CFG_LEFT_WING_OCP_THRESHOLD          "LW_OCP_THR"
+#define CFG_LEFT_WING_OCP_THRESHOLD         "LW_OCP_THR"
 #define CFG_LEFT_WING_OCP_COUNT             "LW_OCP_COUNT"
 
 #define CFG_INPUT_ACTIONS                   "INPUT_ACTIONS"
@@ -125,6 +128,11 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 
 #define CFG_HW_OPTIONS                      "HW_OPTIONS"
 #define CFG_RF_LIST                         "RF_LIST"
+
+#define CFG_MODBUS_BAUDRATE                 "MB_BAUD"
+#define CFG_MODBUS_PARITY                   "MB_PARITY"
+#define CFG_MODBUS_SLAVE_ID                 "MB_ID"
+
 /* HW_OPTIONS */
 
 #define STATIC_CFG_NUM_OF_REMOTES           16
@@ -134,7 +142,6 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 extern device_config_t device_config;
 extern rf_remote_config_t remotes_config[STATIC_CFG_NUM_OF_REMOTES];
 
-#define HW_CHECK_RF_ENABLED() (device_config.hw_options && HW_RF_ENABLED)
 
 
 #endif
