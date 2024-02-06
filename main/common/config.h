@@ -85,7 +85,7 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 #define TCP_KEEPALIVE_COUNT                 3
 
 /* WIFI */
-#define WIFI_MAXIMUM_RETRY                  128
+#define WIFI_MAXIMUM_RETRY                  INT32_MAX
 // #define WIFI_SSID                       "hehe"
 // #define WIFI_PASSWORD                   "not hehe"
 
