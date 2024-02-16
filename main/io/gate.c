@@ -291,7 +291,6 @@ void wing_action_task(void *pvParameters)
                     ESP_LOGI(GATE_CONTROL_LOG_TAG, "stopping RIGHT_WING and LEFT_WING");
                 }
                 break;
-
             case NEXT_STATE:
                 if (current_wing)
                 {
@@ -317,19 +316,6 @@ void wing_action_task(void *pvParameters)
                     wing_stop(&right_wing, true);
                     wing_stop(&left_wing, true);
                     ESP_LOGI(GATE_CONTROL_LOG_TAG, "stopping RIGHT_WING and LEFT_WING");
-                }
-                break;
-
-            default:
-                /* Should never reach but... */
-                if (current_wing)
-                {
-                    wing_close(current_wing);
-                }
-                else
-                {
-                    wing_close(&right_wing);
-                    wing_close(&left_wing);
                 }
                 break;
             }
