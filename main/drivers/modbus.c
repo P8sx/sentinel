@@ -95,7 +95,7 @@ void modbus_init()
 
     mb_register_area_descriptor_t input_reg_area = {
         .type = MB_PARAM_INPUT,
-        .start_offset = 0x0000,
+        .start_offset = 0x1000,
         .address = (void *)&input_reg_params,
         .size = sizeof(input_reg_params),
     };
