@@ -340,12 +340,14 @@ static void mqtt_diagnostic_sensor_config(char *config_buffer, size_t size, cons
 
 static void mqtt_uptime_timer_callback(TimerHandle_t xTimer)
 {
-    /* Every 10 second*/
-    char uptime_str[10];
-    snprintf(uptime_str, 10, "%li", (long)(esp_timer_get_time() / 1000 / 1000));
-    esp_mqtt_client_publish(mqtt_client, mqtt_uptime_topic, uptime_str, 0, 1, 1);
-
     static uint64_t availability_update = 0;
+    /* Every 60 second*/
+    if (availability_update % 6 == 0)
+    {
+        char uptime_str[10];
+        snprintf(uptime_str, 10, "%li", (long)(esp_timer_get_time() / 1000 / 1000));
+        esp_mqtt_client_publish(mqtt_client, mqtt_uptime_topic, uptime_str, 0, 1, 1);
+    }
     /* Every 120 second*/
     if (availability_update % 12 == 0)
     {
