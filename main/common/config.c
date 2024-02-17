@@ -124,8 +124,8 @@ void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_thres
     }
     else{
         device_config.left_wing_dir = dir;
-        device_config.left_wing_dir = ocp_count;
-        device_config.left_wing_dir = ocp_threshold;       
+        device_config.left_wing_ocp_count = ocp_count;
+        device_config.left_wing_ocp_threshold = ocp_threshold;       
     }
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_DIR : CFG_LEFT_WING_DIR, &dir, sizeof(dir));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_THRESHOLD : CFG_LEFT_WING_OCP_THRESHOLD, &ocp_threshold, sizeof(ocp_threshold));
