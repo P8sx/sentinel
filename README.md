@@ -28,7 +28,7 @@ Features:
 - RS485 trcv
 
 ### Schematic && PCB Design
-Will be avaible soon on EasyEDA PRO
+[EasyEDA PRO](https://oshwlab.com/phsx008/sentinel)
 
 ### Comments
 Software is under development major changes can occur.
