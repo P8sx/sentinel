@@ -252,7 +252,7 @@ menu_return_result_e ui_menu_config_delay_submenu()
                     else if (IS_BTN_PRESSED(btn, BTN2_PIN))
                         break;
 
-                    snprintf(option_labels[0], sizeof(option_labels[0]), wing_delay ? "false" : "true");
+                    snprintf(option_labels[0], sizeof(option_labels[0]), wing_delay ? "true" : "false");
 
                     if (btn.event == BUTTON_RELESED)
                         i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Enabled", option_labels[0], "Direction", option_labels[1], "Time", option_labels[2]);

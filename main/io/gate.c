@@ -261,13 +261,13 @@ void wing_action_task(void *pvParameters)
                     if(device_config.wing_delay && device_config.wing_delay_dir == true)
                     {
                         wing_open(&left_wing);
-                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_open(&right_wing);
                     }
                     else if(device_config.wing_delay && device_config.wing_delay_dir == false)
                     {
                         wing_open(&right_wing);                        
-                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_open(&left_wing);
                     }
                     else
@@ -290,13 +290,13 @@ void wing_action_task(void *pvParameters)
                     if(device_config.wing_delay && device_config.wing_delay_dir == true)
                     {
                         wing_close(&left_wing);
-                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_close(&right_wing);
                     }
                     else if(device_config.wing_delay && device_config.wing_delay_dir == false)
                     {
                         wing_close(&right_wing);                        
-                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_close(&left_wing);
                     }
                     else
@@ -333,13 +333,13 @@ void wing_action_task(void *pvParameters)
                     if(device_config.wing_delay && device_config.wing_delay_dir == true)
                     {
                         wing_next_state(&left_wing);
-                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_next_state(&right_wing);
                     }
                     else if(device_config.wing_delay && device_config.wing_delay_dir == false)
                     {
                         wing_next_state(&right_wing);                        
-                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_next_state(&left_wing);
                     }
                     else
