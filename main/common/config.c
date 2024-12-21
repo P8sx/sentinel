@@ -58,6 +58,9 @@ void config_load()
         .modbus_slave_id = 1,
         .modbus_baudrate = 115200,
         .modbus_parity = UART_PARITY_DISABLE,
+        .wing_delay = false,
+        .wing_delay_dir = false,
+        .wing_delay_time = 1000,
     };
     rf_remote_config_t initial_rf_config[STATIC_CFG_NUM_OF_REMOTES] = {0};
 
@@ -106,6 +109,10 @@ void config_load()
     load_config_value(nvs_handle, CFG_MODBUS_PARITY, &initial_device_config.modbus_parity, sizeof(initial_device_config.modbus_parity));
     load_config_value(nvs_handle, CFG_MODBUS_SLAVE_ID, &initial_device_config.modbus_slave_id, sizeof(initial_device_config.modbus_slave_id));
 
+    /*  Wing delay config */
+    load_config_value(nvs_handle, CFG_WING_DELAY, &initial_device_config.wing_delay, sizeof(initial_device_config.wing_delay));
+    load_config_value(nvs_handle, CFG_WING_DELAY_DIR, &initial_device_config.wing_delay_dir, sizeof(initial_device_config.wing_delay_dir));
+    load_config_value(nvs_handle, CFG_WING_DELAY_TIME, &initial_device_config.wing_delay_time, sizeof(initial_device_config.wing_delay_time));
 
     nvs_close(nvs_handle);
     memcpy(&device_config, &initial_device_config, sizeof(device_config));
@@ -130,6 +137,24 @@ void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_thres
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_DIR : CFG_LEFT_WING_DIR, &dir, sizeof(dir));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_THRESHOLD : CFG_LEFT_WING_OCP_THRESHOLD, &ocp_threshold, sizeof(ocp_threshold));
     save_config_value(nvs_handle, RIGHT_WING == wing_id ? CFG_RIGHT_WING_OCP_COUNT : CFG_LEFT_WING_OCP_COUNT, &ocp_count, sizeof(ocp_count));
+
+    ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+    nvs_close(nvs_handle);
+
+    ESP_LOGI(CFG_LOG_TAG, "Config updated");
+}
+
+
+void config_update_delay_settings(bool wing_delay, bool wing_delay_dir, uint32_t wing_delay_time)
+{
+
+    ESP_LOGI(CFG_LOG_TAG, "Config update start");
+    nvs_handle_t nvs_handle;
+    ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext", CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
+
+    save_config_value(nvs_handle, CFG_WING_DELAY, &wing_delay, sizeof(wing_delay));
+    save_config_value(nvs_handle, CFG_WING_DELAY_DIR, &wing_delay_dir, sizeof(wing_delay_dir));
+    save_config_value(nvs_handle, CFG_WING_DELAY_TIME, &wing_delay_time, sizeof(wing_delay_time));
 
     ESP_ERROR_CHECK(nvs_commit(nvs_handle));
     nvs_close(nvs_handle);

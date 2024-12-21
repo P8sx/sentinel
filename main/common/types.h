@@ -185,6 +185,10 @@ typedef struct device_config_t
     uint8_t modbus_slave_id;
     uint8_t modbus_parity;
     uint32_t modbus_baudrate;
+
+    bool wing_delay;
+    bool wing_delay_dir;
+    uint32_t wing_delay_time;
     
 } device_config_t;
 

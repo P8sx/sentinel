@@ -258,8 +258,23 @@ void wing_action_task(void *pvParameters)
                 }
                 else
                 {
-                    wing_open(&right_wing);
-                    wing_open(&left_wing);
+                    if(device_config.wing_delay && device_config.wing_delay_dir == true)
+                    {
+                        wing_open(&left_wing);
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        wing_open(&right_wing);
+                    }
+                    else if(device_config.wing_delay && device_config.wing_delay_dir == false)
+                    {
+                        wing_open(&right_wing);                        
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        wing_open(&left_wing);
+                    }
+                    else
+                    {
+                        wing_open(&right_wing);                        
+                        wing_open(&left_wing);
+                    }
                     ESP_LOGI(GATE_CONTROL_LOG_TAG, "opening RIGHT_WING and LEFT_WING");
                 }
                 break;
@@ -272,8 +287,23 @@ void wing_action_task(void *pvParameters)
                 }
                 else
                 {
-                    wing_close(&right_wing);
-                    wing_close(&left_wing);
+                    if(device_config.wing_delay && device_config.wing_delay_dir == true)
+                    {
+                        wing_close(&left_wing);
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        wing_close(&right_wing);
+                    }
+                    else if(device_config.wing_delay && device_config.wing_delay_dir == false)
+                    {
+                        wing_close(&right_wing);                        
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        wing_close(&left_wing);
+                    }
+                    else
+                    {
+                        wing_close(&right_wing);                        
+                        wing_close(&left_wing);
+                    }
                     ESP_LOGI(GATE_CONTROL_LOG_TAG, "closing RIGHT_WING and LEFT_WING");
                 }
                 break;
@@ -300,8 +330,23 @@ void wing_action_task(void *pvParameters)
                 {
                     /* RIGHT_WING is leading in other to prevent action like RIGHT_WING is closing and LEFT_WING opening assign same state */
                     left_wing.state = right_wing.state;
-                    wing_next_state(&right_wing);
-                    wing_next_state(&left_wing);
+                    if(device_config.wing_delay && device_config.wing_delay_dir == true)
+                    {
+                        wing_next_state(&left_wing);
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        wing_next_state(&right_wing);
+                    }
+                    else if(device_config.wing_delay && device_config.wing_delay_dir == false)
+                    {
+                        wing_next_state(&right_wing);                        
+                        vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_dir));
+                        wing_next_state(&left_wing);
+                    }
+                    else
+                    {
+                        wing_next_state(&right_wing);                        
+                        wing_next_state(&left_wing);
+                    }                   
                 }
                 break;
 

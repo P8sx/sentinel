@@ -215,6 +215,95 @@ menu_return_result_e ui_menu_config_wing_submenu(wing_id_t wing_id)
     return TIMER_RETURN;
 }
 
+menu_return_result_e ui_menu_config_delay_submenu()
+{
+    const uint8_t menu_options = 3;
+    uint8_t pos = 0;
+    button_event_t btn;
+    char option_labels[3][30];
+    const char *menu_label = "Config-> Delay";
+
+    bool wing_delay = device_config.wing_delay;
+    bool wing_delay_dir = device_config.wing_delay_dir;
+    uint32_t wing_delay_time = device_config.wing_delay_time;
+
+    snprintf(option_labels[0], sizeof(option_labels[0]), wing_delay ? "false" : "true");
+    snprintf(option_labels[1], sizeof(option_labels[0]), wing_delay_dir ? "right" : "left");
+    snprintf(option_labels[2], sizeof(option_labels[0]), "%lu ms", wing_delay_time);
+
+    while (RECEIVE_FROM_BTN_QUEUE(btn))
+    {
+        if (IS_BTN_PRESSED(btn, BTN1_PIN))
+            pos = pos < menu_options ? pos + 1 : pos;
+        else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+            pos = pos > 0 ? pos - 1 : pos;
+        else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+        {
+            switch (pos)
+            {
+            case 0:
+                return USER_RETURN;
+                break;
+            case 1:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN) || IS_BTN_PRESSED(btn, BTN3_PIN))
+                        wing_delay = !wing_delay;
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                        break;
+
+                    snprintf(option_labels[0], sizeof(option_labels[0]), wing_delay ? "false" : "true");
+
+                    if (btn.event == BUTTON_RELESED)
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Enabled", option_labels[0], "Direction", option_labels[1], "Time", option_labels[2]);
+                }
+                break;
+            case 2:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN) || IS_BTN_PRESSED(btn, BTN3_PIN))
+                        wing_delay_dir = !wing_delay_dir;
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                        break;
+
+                    snprintf(option_labels[1], sizeof(option_labels[0]), wing_delay_dir ? "right" : "left");
+
+                    if (btn.event == BUTTON_RELESED)
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Enabled", option_labels[0], "Direction", option_labels[1], "Time", option_labels[2]);
+                }
+                break;
+            case 3:
+                while (RECEIVE_FROM_BTN_QUEUE(btn))
+                {
+                    if (IS_BTN_PRESSED(btn, BTN1_PIN))
+                        wing_delay_time -= 50;
+                    else if (IS_BTN_HELD(btn, BTN1_PIN))
+                        wing_delay_time -= 100;
+                    else if (IS_BTN_PRESSED(btn, BTN3_PIN))
+                        wing_delay_time += 50;
+                    else if (IS_BTN_HELD(btn, BTN3_PIN))
+                        wing_delay_time += 100;
+                    else if (IS_BTN_PRESSED(btn, BTN2_PIN))
+                        break;
+
+                    snprintf(option_labels[2], sizeof(option_labels[0]), "%lu ms", wing_delay_time);
+
+                    if (btn.event == BUTTON_RELESED || btn.event == BUTTON_HELD)
+                        i2c_oled_menu_with_params(menu_label, pos, true, menu_options * 2, "Enabled", option_labels[0], "Direction", option_labels[1], "Time", option_labels[2]);
+                }
+                break;
+            default:
+                break;
+            }
+            config_update_delay_settings(wing_delay, wing_delay_dir, wing_delay_time);
+            io_buzzer(3, 20, 20);
+        }
+        if (btn.event == BUTTON_RELESED)
+            i2c_oled_menu_with_params(menu_label, pos, false, menu_options * 2, "Enabled", option_labels[0], "Direction", option_labels[1], "Time", option_labels[2]);
+    }
+    return TIMER_RETURN;
+}
+
 menu_return_result_e ui_menu_config_input_submenu()
 {
     const uint8_t menu_options = 4;
@@ -596,7 +685,7 @@ menu_return_result_e ui_menu_config_modbus_submenu()
 menu_return_result_e ui_menu_config_menu()
 {
 
-    const uint8_t menu_options = 6;
+    const uint8_t menu_options = 7;
     uint8_t pos = 0;
     button_event_t btn;
     while (RECEIVE_FROM_BTN_QUEUE(btn))
@@ -620,15 +709,18 @@ menu_return_result_e ui_menu_config_menu()
                 return_result = ui_menu_config_wing_submenu(LEFT_WING);
                 break;
             case 3:
-                return_result = ui_menu_config_input_submenu();
+                return_result = ui_menu_config_delay_submenu();
                 break;
             case 4:
-                return_result = ui_menu_config_output_submenu();
+                return_result = ui_menu_config_input_submenu();
                 break;
             case 5:
-                return_result = ui_menu_config_rf_submenu();
+                return_result = ui_menu_config_output_submenu();
                 break;
             case 6:
+                return_result = ui_menu_config_rf_submenu();
+                break;
+            case 7:
                 return_result = ui_menu_config_modbus_submenu();
                 break;
             default:
@@ -639,7 +731,7 @@ menu_return_result_e ui_menu_config_menu()
         }
         if (btn.event == BUTTON_RELESED)
         {
-            i2c_oled_menu("Config", pos, menu_options, "Right wing", "Left wing", "Input", "Output", "RF", "MODBUS");
+            i2c_oled_menu("Config", pos, menu_options, "Right wing", "Left wing", "Delay", "Input", "Output", "RF", "MODBUS");
         }
     }
     return TIMER_RETURN;

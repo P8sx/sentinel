@@ -9,6 +9,7 @@ void config_update_wing_settings(wing_id_t wing_id, bool dir, uint16_t ocp_thres
 void config_update_input_settings(input_action_t in1, input_action_t in2, input_action_t in3, input_action_t in4);
 void config_update_output_settings(output_action_t out1, output_action_t out2);
 void config_update_modbus_settings(uint8_t slave_id, uint8_t parity, uint32_t baudrate);
+void config_update_delay_settings(bool wing_delay, bool wing_delay_dir, uint32_t wing_delay_time);
 bool config_add_remote(uint64_t rf_code, input_action_t action);
 void config_remove_remote(uint64_t rf_code);
 bool config_check_remote(uint64_t rf_code);
@@ -117,6 +118,10 @@ uint64_t config_get_next_remote(uint64_t rf_code);
 #define CFG_LEFT_WING_DIR                   "LW_DIR"
 #define CFG_LEFT_WING_OCP_THRESHOLD         "LW_OCP_THR"
 #define CFG_LEFT_WING_OCP_COUNT             "LW_OCP_COUNT"
+
+#define CFG_WING_DELAY                      "W_DEL"
+#define CFG_WING_DELAY_DIR                  "W_DEL_DIR"
+#define CFG_WING_DELAY_TIME                 "W_DEL_TIME"
 
 #define CFG_INPUT_ACTIONS                   "INPUT_ACTIONS"
 #define CFG_OUTPUT_ACTIONS                  "OUTPUT_ACTIONS"
