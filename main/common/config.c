@@ -152,6 +152,11 @@ void config_update_delay_settings(bool wing_delay, bool wing_delay_dir, uint32_t
     nvs_handle_t nvs_handle;
     ESP_ERROR_CHECK(nvs_open_from_partition("nvs_ext", CFG_NAMESPACE, NVS_READWRITE, &nvs_handle));
 
+    device_config.wing_delay = wing_delay;
+    device_config.wing_delay_dir = wing_delay_dir;
+    device_config.wing_delay_time = wing_delay_time;
+
+
     save_config_value(nvs_handle, CFG_WING_DELAY, &wing_delay, sizeof(wing_delay));
     save_config_value(nvs_handle, CFG_WING_DELAY_DIR, &wing_delay_dir, sizeof(wing_delay_dir));
     save_config_value(nvs_handle, CFG_WING_DELAY_TIME, &wing_delay_time, sizeof(wing_delay_time));

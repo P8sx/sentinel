@@ -330,7 +330,12 @@ void wing_action_task(void *pvParameters)
                 {
                     /* RIGHT_WING is leading in other to prevent action like RIGHT_WING is closing and LEFT_WING opening assign same state */
                     left_wing.state = right_wing.state;
-                    if(device_config.wing_delay && device_config.wing_delay_dir == true)
+                    if (right_wing.state == CLOSING || right_wing.state == OPENING)
+                    {
+                        wing_next_state(&right_wing);                        
+                        wing_next_state(&left_wing);
+                    }   
+                    else if(device_config.wing_delay && device_config.wing_delay_dir == true)
                     {
                         wing_next_state(&left_wing);
                         vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
@@ -342,11 +347,11 @@ void wing_action_task(void *pvParameters)
                         vTaskDelay(pdMS_TO_TICKS(device_config.wing_delay_time));
                         wing_next_state(&left_wing);
                     }
-                    else
+                    else 
                     {
                         wing_next_state(&right_wing);                        
                         wing_next_state(&left_wing);
-                    }                   
+                    } 
                 }
                 break;
 
