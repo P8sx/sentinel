@@ -227,7 +227,7 @@ menu_return_result_e ui_menu_config_delay_submenu()
     bool wing_delay_dir = device_config.wing_delay_dir;
     uint32_t wing_delay_time = device_config.wing_delay_time;
 
-    snprintf(option_labels[0], sizeof(option_labels[0]), wing_delay ? "false" : "true");
+    snprintf(option_labels[0], sizeof(option_labels[0]), wing_delay ? "true" : "false");
     snprintf(option_labels[1], sizeof(option_labels[0]), wing_delay_dir ? "right" : "left");
     snprintf(option_labels[2], sizeof(option_labels[0]), "%lu ms", wing_delay_time);
 
