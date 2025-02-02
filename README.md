@@ -23,7 +23,7 @@ Features:
 - 2 NMOS Output
 - OLED with button controls
 - 4 input (screw terminal)
-- 4 intpu (for endstop's via pin header)
+- 4 input (for endstop's via pin header)
 - External I2C header
 - RS485 trcv
 
