@@ -15,7 +15,6 @@ Goal of project was to create dual DC motor driver for controlling dual wing gat
 - Current feedback
 - Small form factor
 
-
 ## Hardware
 Board is based on [ESP32-S3-WROOM-1-N8](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf)
 Each motor is connected to driver using 4 wires (2 for power, 2 for impulse counter). 
@@ -31,12 +30,19 @@ Features:
 [EasyEDA PRO](https://oshwlab.com/phsx008/sentinel)
 
 ### Comments
-Software is under development major changes can occur.
-There were few mistake in pcb schematic (wrong footprint/spacing already fixed in v1.1)
+Software is not as perfect as I would want but 3 devices are working successfully for <2 years with Home Assistant
+
+
+For hardware, the IO input section is way too overengineered and the PCB terminal choice is not as perfect as I imagined when designing.
+t
 
 ## Used libraries
 [U8G2](https://github.com/olikraus/u8g2) - licensed under the terms of the new-bsd license
+
+
 [ghota](https://github.com/Fishwaldo/esp_ghota) - MIT license
+
+
 [esp32-button](https://github.com/craftmetrics/esp32-button) - MIT license
 ## License
 Sentinel is licensed under General Public License v3 ( GPLv3 ).
