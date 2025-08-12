@@ -34,7 +34,6 @@ Software is not as perfect as I would want but 3 devices are working successfull
 
 
 For hardware, the IO input section is way too overengineered and the PCB terminal choice is not as perfect as I imagined when designing.
-t
 
 ## Used libraries
 [U8G2](https://github.com/olikraus/u8g2) - licensed under the terms of the new-bsd license
